@@ -7,6 +7,7 @@
 
 import cv2
 import numpy as np
+import time
 from typing import List, Tuple, Callable, Optional
 
 
@@ -25,13 +26,22 @@ class SimpleGUI:
         self.current_image = None
         self.display_image = None
         self.callback = None
+        self.gui_enabled = True
         
-        # 创建窗口
-        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
-        cv2.setMouseCallback(self.window_name, self._mouse_callback)
-    
+        # 尝试创建窗口并设置鼠标回调；在无GUI（headless）环境下，OpenCV可能抛出错误
+        try:
+            cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
+            cv2.setMouseCallback(self.window_name, self._mouse_callback)
+            self.gui_enabled = True
+        except cv2.error as e:
+            # 如果无法创建窗口或设置回调，则进入 headless 模式，禁用所有GUI相关功能
+            print(f"Warning: OpenCV GUI not available ({e}). Running in headless mode.")
+            self.gui_enabled = False
+
     def _mouse_callback(self, event, x, y, flags, param):
         """鼠标回调函数"""
+        if not self.gui_enabled:
+            return
         if event == cv2.EVENT_LBUTTONDOWN:
             # 左键点击，添加点
             self.points.append((x, y))
@@ -50,10 +60,13 @@ class SimpleGUI:
                 
                 if self.callback:
                     self.callback(self.points)
-    
+
     def _update_display(self):
         """更新显示图像"""
         if self.current_image is None:
+            return
+        # 如果没有GUI支持，跳过所有显示操作（但保留points状态）
+        if not self.gui_enabled:
             return
         
         self.display_image = self.current_image.copy()
@@ -72,7 +85,7 @@ class SimpleGUI:
             cv2.polylines(self.display_image, [pts], True, (255, 0, 0), 2)
         
         cv2.imshow(self.window_name, self.display_image)
-    
+
     def set_image(self, image):
         """
         设置显示的图像
@@ -82,7 +95,7 @@ class SimpleGUI:
         """
         self.current_image = image.copy()
         self._update_display()
-    
+
     def set_callback(self, callback: Callable[[List[Tuple[int, int]]], None]):
         """
         设置点选择回调函数
@@ -91,16 +104,16 @@ class SimpleGUI:
             callback: 回调函数，参数为点列表
         """
         self.callback = callback
-    
+
     def get_points(self) -> List[Tuple[int, int]]:
         """获取选中的点"""
         return self.points.copy()
-    
+
     def clear_points(self):
         """清空所有点"""
         self.points = []
         self._update_display()
-    
+
     def set_points(self, points: List[Tuple[int, int]]):
         """
         设置点列表
@@ -110,7 +123,7 @@ class SimpleGUI:
         """
         self.points = points.copy()
         self._update_display()
-    
+
     def show_result(self, result_image, window_name=None):
         """
         显示结果图像
@@ -119,13 +132,17 @@ class SimpleGUI:
             result_image: 结果图像
             window_name: 窗口名称，如果为None则使用默认名称
         """
+        if not self.gui_enabled:
+            print("Warning: GUI not available, cannot show result window.")
+            return None
+        
         if window_name is None:
             window_name = self.window_name + "_Result"
         
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.imshow(window_name, result_image)
         return window_name
-    
+
     def wait_key(self, delay=0) -> int:
         """
         等待按键
@@ -136,12 +153,18 @@ class SimpleGUI:
         Returns:
             按键的ASCII码
         """
+        if not self.gui_enabled:
+            # 在无GUI的情况下，模拟等待并返回-1
+            time.sleep(delay / 1000.0 if delay > 0 else 0.01)
+            return -1
         return cv2.waitKey(delay) & 0xFF
-    
+
     def destroy_all_windows(self):
         """关闭所有窗口"""
+        if not self.gui_enabled:
+            return
         cv2.destroyAllWindows()
-    
+
     def show_instructions(self):
         """显示使用说明"""
         print("=" * 50)
@@ -168,9 +191,16 @@ def select_points_interactive(image, min_points=4, window_name="Select Points"):
         选中的点列表，如果用户取消则返回None
     """
     gui = SimpleGUI(window_name)
+
+    # 如果GUI不可用，应当尽早报错并提示用户（例如在headless环境中）
+    if not gui.gui_enabled:
+        raise RuntimeError(
+            "OpenCV GUI 不可用，无法进行交互式选点。请在有图形界面的环境运行（X11/Wayland），或使用 X11 转发 / xvfb-run 等手段。"
+        )
+
     gui.set_image(image)
     gui.show_instructions()
-    
+
     while True:
         key = gui.wait_key(30)
         
