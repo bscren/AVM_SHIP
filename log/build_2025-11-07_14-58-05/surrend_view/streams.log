@@ -1,0 +1,33 @@
+[0.009s] Invoking command in '/home/tl/AVM_Ship/build/surrend_view': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/tl/RV/install/yolo_detect:/home/tl/RV/install/webcamcalib:/home/tl/RV/install/marnav_vis:/home/tl/RV/install/camera_calibration:/home/tl/RV/install/ais_tools:/opt/ros/humble /usr/bin/cmake --build /home/tl/AVM_Ship/build/surrend_view -- -j20 -l20
+[0.039s] [35m[1mConsolidate compiler generated dependencies of target multi_usb_camera_node[0m
+[0.053s] [ 25%] [32mBuilding CXX object CMakeFiles/multi_usb_camera_node.dir/src/multi_usb_camera_node.cpp.o[0m
+[3.202s] [ 50%] [32m[1mLinking CXX shared library libmulti_usb_camera_node.so[0m
+[3.338s] [ 50%] Built target multi_usb_camera_node
+[3.360s] [ 75%] [32m[1mLinking CXX executable multi_usb_camera_node_exec[0m
+[3.622s] [100%] Built target multi_usb_camera_node_exec
+[3.630s] Invoked command in '/home/tl/AVM_Ship/build/surrend_view' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/tl/RV/install/yolo_detect:/home/tl/RV/install/webcamcalib:/home/tl/RV/install/marnav_vis:/home/tl/RV/install/camera_calibration:/home/tl/RV/install/ais_tools:/opt/ros/humble /usr/bin/cmake --build /home/tl/AVM_Ship/build/surrend_view -- -j20 -l20
+[3.638s] Invoking command in '/home/tl/AVM_Ship/build/surrend_view': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/tl/RV/install/yolo_detect:/home/tl/RV/install/webcamcalib:/home/tl/RV/install/marnav_vis:/home/tl/RV/install/camera_calibration:/home/tl/RV/install/ais_tools:/opt/ros/humble /usr/bin/cmake --install /home/tl/AVM_Ship/build/surrend_view
+[3.645s] -- Install configuration: ""
+[3.645s] -- Installing: /home/tl/AVM_Ship/install/surrend_view/lib/libmulti_usb_camera_node.so
+[3.646s] -- Set runtime path of "/home/tl/AVM_Ship/install/surrend_view/lib/libmulti_usb_camera_node.so" to ""
+[3.646s] -- Installing: /home/tl/AVM_Ship/install/surrend_view/lib/surrend_view/multi_usb_camera_node_exec
+[3.646s] -- Set runtime path of "/home/tl/AVM_Ship/install/surrend_view/lib/surrend_view/multi_usb_camera_node_exec" to ""
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/include/
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/include//surrend_view
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/include//surrend_view/multi_usb_camera_node.hpp
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/ament_index/resource_index/package_run_dependencies/surrend_view
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/ament_index/resource_index/parent_prefix_path/surrend_view
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/environment/ament_prefix_path.sh
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/environment/ament_prefix_path.dsv
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/environment/path.sh
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/environment/path.dsv
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/local_setup.bash
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/local_setup.sh
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/local_setup.zsh
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/local_setup.dsv
+[3.647s] -- Installing: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/package.dsv
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/ament_index/resource_index/packages/surrend_view
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/cmake/surrend_viewConfig.cmake
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/cmake/surrend_viewConfig-version.cmake
+[3.647s] -- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/package.xml
+[3.649s] Invoked command in '/home/tl/AVM_Ship/build/surrend_view' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/tl/RV/install/yolo_detect:/home/tl/RV/install/webcamcalib:/home/tl/RV/install/marnav_vis:/home/tl/RV/install/camera_calibration:/home/tl/RV/install/ais_tools:/opt/ros/humble /usr/bin/cmake --install /home/tl/AVM_Ship/build/surrend_view

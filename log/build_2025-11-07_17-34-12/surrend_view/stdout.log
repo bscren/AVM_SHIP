@@ -1,0 +1,30 @@
+[35m[1mConsolidate compiler generated dependencies of target image_saver_node[0m
+[ 33%] Built target multi_usb_camera_node
+[ 50%] [32mBuilding CXX object CMakeFiles/image_saver_node.dir/src/image_saver_node.cpp.o[0m
+[ 83%] Built target multi_usb_camera_node_exec
+[100%] [32m[1mLinking CXX executable image_saver_node[0m
+[100%] Built target image_saver_node
+-- Install configuration: ""
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/lib/libmulti_usb_camera_node.so
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/lib/surrend_view/multi_usb_camera_node_exec
+-- Installing: /home/tl/AVM_Ship/install/surrend_view/lib/surrend_view/image_saver_node
+-- Set runtime path of "/home/tl/AVM_Ship/install/surrend_view/lib/surrend_view/image_saver_node" to ""
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/include/
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/include//surrend_view
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/include//surrend_view/multi_usb_camera_node.hpp
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/include//surrend_view/image_saver_node.hpp
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/ament_index/resource_index/package_run_dependencies/surrend_view
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/ament_index/resource_index/parent_prefix_path/surrend_view
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/environment/ament_prefix_path.sh
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/environment/ament_prefix_path.dsv
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/environment/path.sh
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/environment/path.dsv
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/local_setup.bash
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/local_setup.sh
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/local_setup.zsh
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/local_setup.dsv
+-- Installing: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/package.dsv
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/ament_index/resource_index/packages/surrend_view
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/cmake/surrend_viewConfig.cmake
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/cmake/surrend_viewConfig-version.cmake
+-- Up-to-date: /home/tl/AVM_Ship/install/surrend_view/share/surrend_view/package.xml

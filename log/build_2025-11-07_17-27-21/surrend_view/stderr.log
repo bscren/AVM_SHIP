@@ -1,0 +1,8 @@
+[01m[K/home/tl/AVM_Ship/src/surrend_view/src/image_saver_node.cpp:1:10:[m[K [01;31m[Kfatal error: [m[Kimage_saver/image_saver_node.hpp: 没有那个文件或目录
+    1 | #include [01;31m[K"image_saver/image_saver_node.hpp"[m[K
+      |          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+compilation terminated.
+gmake[2]: *** [CMakeFiles/image_saver_node.dir/build.make:76：CMakeFiles/image_saver_node.dir/src/image_saver_node.cpp.o] 错误 1
+gmake[1]: *** [CMakeFiles/Makefile2:193：CMakeFiles/image_saver_node.dir/all] 错误 2
+gmake[1]: *** 正在等待未完成的任务....
+gmake: *** [Makefile:146：all] 错误 2
