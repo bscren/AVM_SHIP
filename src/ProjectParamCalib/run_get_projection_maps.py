@@ -214,6 +214,11 @@ class ProjectionMapper:
         
         self.param_settings.save_projection_maps(self.camera_name, self.map_x, self.map_y, output_file)
 
+    def save_mask(self, output_file=None):
+        """保存掩码"""
+        if self.mask is None:
+            raise ValueError("掩码未计算")
+        self.param_settings.save_mask(self.camera_name, self.mask, output_file)
 
 def main():
     parser = argparse.ArgumentParser(description='生成投影映射矩阵')
@@ -246,8 +251,8 @@ def main():
     # 调试时可直接设置参数
     args.camera_name = 'front'
     # 使用相对于项目根目录（以脚本文件为基准）的相对路径
-    args.image_path = str(Path(__file__).resolve().parents[2] / "images" / f"cam_{args.camera_name}.jpg")
-    args.images_dir = str(Path(__file__).resolve().parents[2] / "images")
+    args.image_path = str(Path(__file__).resolve().parents[2] / "config" / "images" /f"cam_{args.camera_name}.jpg")
+    args.images_dir = str(Path(__file__).resolve().parents[2] / "config" / "images")
     args.calib_dir = str(Path(__file__).resolve().parents[2] / "config" / "calibration_results")
     args.config_dir = str(Path(__file__).resolve().parents[2] / "config")
     args.output_width = 500
@@ -355,6 +360,27 @@ def main():
         cv2.imwrite(output_image_path, projected_image)
         print(f"结果图像已保存到: {output_image_path}")
     
+
+    # 在结果图像上使用鼠标点击单个点，绘制不规则多边形，将其区域设为白色掩码，区域外设为黑色掩码
+    mask_choice = input("是否为投影结果图像创建不规则多边形掩码？(y/n，默认n): ").strip().lower()
+    if mask_choice == 'y':
+        mask_points = select_points_interactive(
+            projected_image, 
+            min_points=4, 
+            window_name="按顺序人工选取多边形掩码区域"
+            )
+        if mask_points is not None and len(mask_points) >= 4:
+            print("生成掩码...")
+            mapper.mask = param_settings.compute_mask_from_points( projected_image, mask_points)
+            mapper.save_mask(args.images_dir)
+            gui.show_result(mapper.mask, "Hand-drawn Mask")
+            print("\n按任意键查看结果，按 'q' 退出")
+            while True:
+                key = gui.wait_key(30) # 30ms表示刷新间隔
+                if key == ord('q'):
+                    break
+            
+        
     gui.destroy_all_windows()
     print("完成！")
 

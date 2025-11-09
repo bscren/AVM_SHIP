@@ -139,6 +139,8 @@ def get_projection_file(camera_name, file_type="maps", create_dir=True):
         return proj_dir / f"projection_maps_{camera_name}.yaml"
     elif file_type == "points":
         return proj_dir / f"birdview_points_{camera_name}.yaml"
+    elif file_type == "mask":
+        return proj_dir / f"mask_{camera_name}.png"
     else:
         raise ValueError(f"未知的文件类型: {file_type}")
 

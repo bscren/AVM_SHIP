@@ -230,3 +230,33 @@ class ParamSettings:
         
         return src_points, dst_points
 
+    def compute_mask_from_points(self, image, points):
+        """
+        在结果图像上使用鼠标点击单个点，绘制不规则多边形，将其区域设为白色掩码，区域外设为黑色掩码
+        """
+        mask = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
+        pts = np.array(points, dtype=np.int32)
+        cv2.fillPoly(mask, [pts], 255)
+
+        return mask
+    
+    def save_mask(self, camera_name, mask, output_file=None):
+        """
+        保存掩码图像
+        
+        Args:
+            camera_name: 相机名称
+            mask: 掩码图像
+            output_file: 输出文件路径
+        """
+        if output_file is None:
+            # 使用路径管理工具获取掩码文件路径
+            from .path_manager import get_projection_file
+            output_file = get_projection_file(camera_name, "mask")
+        else:
+            output_file = Path(output_file)
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            output_file = str(output_file / f"mask_{camera_name}.png")
+
+        cv2.imwrite(output_file, mask)
+        print(f"掩码图像已保存到: {output_file}")
