@@ -1,0 +1,31 @@
+{
+    "ROS2.distro": "humble",
+    "python.autoComplete.extraPaths": [
+        "/home/tl/RV/install/yolo_detect/lib/python3.10/site-packages",
+        "/home/tl/RV/install/webcamcalib/lib/python3.10/site-packages",
+        "/home/tl/RV/install/mycustface/local/lib/python3.10/dist-packages",
+        "/home/tl/RV/install/marnav_vis/lib/python3.10/site-packages",
+        "/home/tl/RV/install/marnav_interfaces/local/lib/python3.10/dist-packages",
+        "/home/tl/RV/install/detect_interfaces/local/lib/python3.10/dist-packages",
+        "/home/tl/RV/install/camera_calibration/lib/python3.10/site-packages",
+        "/home/tl/RV/install/ais_tools/lib/python3.10/site-packages",
+        "/home/tl/RV/install/ais_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "ros.distro": "humble",
+    "python.analysis.extraPaths": [
+        "/home/tl/RV/install/yolo_detect/lib/python3.10/site-packages",
+        "/home/tl/RV/install/webcamcalib/lib/python3.10/site-packages",
+        "/home/tl/RV/install/mycustface/local/lib/python3.10/dist-packages",
+        "/home/tl/RV/install/marnav_vis/lib/python3.10/site-packages",
+        "/home/tl/RV/install/marnav_interfaces/local/lib/python3.10/dist-packages",
+        "/home/tl/RV/install/detect_interfaces/local/lib/python3.10/dist-packages",
+        "/home/tl/RV/install/camera_calibration/lib/python3.10/site-packages",
+        "/home/tl/RV/install/ais_tools/lib/python3.10/site-packages",
+        "/home/tl/RV/install/ais_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "cmake.sourceDirectory": "/home/tl/AVM_Ship/src/surrend_view"
+}

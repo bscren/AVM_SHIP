@@ -1,0 +1,11 @@
+source;share/surrend_view/hook/cmake_prefix_path.ps1
+source;share/surrend_view/hook/cmake_prefix_path.dsv
+source;share/surrend_view/hook/cmake_prefix_path.sh
+source;share/surrend_view/hook/ld_library_path_lib.ps1
+source;share/surrend_view/hook/ld_library_path_lib.dsv
+source;share/surrend_view/hook/ld_library_path_lib.sh
+source;share/surrend_view/local_setup.bash
+source;share/surrend_view/local_setup.dsv
+source;share/surrend_view/local_setup.ps1
+source;share/surrend_view/local_setup.sh
+source;share/surrend_view/local_setup.zsh

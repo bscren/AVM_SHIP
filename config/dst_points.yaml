@@ -1,0 +1,18 @@
+%YAML:1.0
+---
+front_dst_points: !!opencv-matrix
+   rows: 4
+   cols: 2
+   dt: d
+   data: [100.0, 400.0,
+          400.0, 400.0,
+          400.0, 100.0,
+          100.0, 100.0]
+back_dst_points: !!opencv-matrix
+   rows: 4
+   cols: 2
+   dt: d
+   data: [100.0, 400.0,
+          400.0, 400.0,
+          400.0, 100.0,
+          100.0, 100.0]
