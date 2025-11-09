@@ -257,7 +257,7 @@ def main():
     args.config_dir = str(Path(__file__).resolve().parents[2] / "config")
     args.output_width = 500
     args.output_height = 1000
-    args.undistort = True
+    args.undistort = True 
     args.load_existing = True
     # ===================================================================== 
 
