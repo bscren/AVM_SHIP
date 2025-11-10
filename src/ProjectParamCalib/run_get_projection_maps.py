@@ -39,23 +39,25 @@ class ProjectionMapper:
         self.fisheye_camera = FisheyeCamera(camera_name, param_settings)
         
         # 投影映射矩阵
-        self.map_x = None
-        self.map_y = None
+        self.calib_map_x = None
+        self.calib_map_y = None
+        self.project_map_x = None
+        self.project_map_y = None
         self.homography = None
         
-    def select_birdview_points(self, image, load_existing=True):
+    def select_birdview_points(self, image, load_existing_points=True):
         """
         选择鸟瞰图对应点
         
         Args:
             image: 输入图像
-            load_existing: 是否尝试加载已存在的点
+            load_existing_points: 是否尝试加载已存在的点
             
         Returns:
             tuple: (src_points, dst_points) 源点和目标点
         """
         # 尝试加载已存在的点
-        if load_existing:
+        if load_existing_points:
             src_points, dst_points = self.param_settings.load_birdview_points(self.camera_name)
             if src_points is not None and dst_points is not None:
                 print(f"加载已存在的 {self.camera_name} 相机选点")
@@ -77,7 +79,7 @@ class ProjectionMapper:
         
         src_points = np.array(src_points[:4], dtype=np.float32)
         
-        # 定义目标鸟瞰图中的点（默认矩形）
+        # ============================DEBUG 定义目标鸟瞰图中的点（默认矩形）=============================
         # 可以根据实际车辆尺寸调整
         margin = 100  # 边距
         # 依据相机的类型，预设对应的目标点默认坐标
@@ -97,6 +99,7 @@ class ProjectionMapper:
                 [self.output_width - margin, margin_bottom],  # 右下
                 [margin, margin_bottom]  # 左下
             ], dtype=np.float32)
+        # ==========================================================================================
 
         # 可以选择自定义目标点
         print(f"\n目标点（鸟瞰图）默认设置为:")
@@ -105,8 +108,8 @@ class ProjectionMapper:
         print(f"  右下: ({dst_points[2][0]:.0f}, {dst_points[2][1]:.0f})")
         print(f"  左下: ({dst_points[3][0]:.0f}, {dst_points[3][1]:.0f})")
         
-        user_input = input("是否自定义目标点？(y/n，默认n): ").strip().lower()
-        if user_input == 'y':
+        user_input = input("是否自定义目标点？(y/n，默认y): ").strip().lower()
+        if user_input != 'n':
             print("\n请为目标鸟瞰图选择4个对应点")
             dst_image = np.zeros((self.output_height, self.output_width, 3), dtype=np.uint8)
             # 绘制网格帮助定位
@@ -185,10 +188,10 @@ class ProjectionMapper:
         src_x = np.clip(src_x, 0, w - 1)
         src_y = np.clip(src_y, 0, h - 1)
         
-        self.map_x = src_x.astype(np.float32)
-        self.map_y = src_y.astype(np.float32)
+        self.project_map_x = src_x.astype(np.float32)
+        self.project_map_y = src_y.astype(np.float32)
         
-        return self.map_x, self.map_y
+        return self.project_map_x, self.project_map_y
     
     def apply_projection(self, image):
         """
@@ -200,19 +203,31 @@ class ProjectionMapper:
         Returns:
             投影后的图像
         """
-        if self.map_x is None or self.map_y is None:
+        if self.project_map_x is None or self.project_map_y is None:
             raise ValueError("投影映射未计算，请先调用 compute_projection_maps")
         
         # 使用remap进行投影
-        projected = cv2.remap(image, self.map_x, self.map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        projected = cv2.remap(image, self.project_map_x, self.project_map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
         return projected
-    
+
+    def save_calibration_maps(self, calib_map_x, calib_map_y, output_file=None):
+        """
+        保存标定映射矩阵
+        """
+        self.calib_map_x = calib_map_x
+        self.calib_map_y = calib_map_y
+
+        if self.calib_map_x is None or self.calib_map_y is None:
+            raise ValueError("标定映射未计算")
+        
+        self.param_settings.save_calibration_maps(self.camera_name, self.calib_map_x, self.calib_map_y, output_file)
+
     def save_projection_maps(self, output_file=None):
         """保存投影映射"""
-        if self.map_x is None or self.map_y is None:
+        if self.project_map_x is None or self.project_map_y is None:
             raise ValueError("投影映射未计算")
         
-        self.param_settings.save_projection_maps(self.camera_name, self.map_x, self.map_y, output_file)
+        self.param_settings.save_projection_maps(self.camera_name, self.project_map_x, self.project_map_y, output_file)
 
     def save_mask(self, output_file=None):
         """保存掩码"""
@@ -223,47 +238,50 @@ class ProjectionMapper:
 def main():
     parser = argparse.ArgumentParser(description='生成投影映射矩阵')
     parser.add_argument('--camera_name', type=str, required=False,
-                        choices=['front', 'back', 'left', 'right'],
+                        default = 'front',choices=['front', 'back', 'left', 'right'],
                         help='相机名称')
-    parser.add_argument('--image_path', type=str, required=False,
-                        help='测试single图像路径')
-    parser.add_argument('--images_dir', type=str, default=None,
+    parser.add_argument('--images_dir', type=str,
+                        default=str(Path(__file__).resolve().parents[2] / "config" / "images"),
                         help='测试图像目录（如果提供，则忽略 image_path）')
-    parser.add_argument('--calib_dir', type=str, default=None,
+    parser.add_argument('--calib_dir', type=str,
+                        default = str(Path(__file__).resolve().parents[2] / "config" / "calibration_results"),
                         help='标定文件目录（默认使用统一配置目录）')
-    parser.add_argument('--config_dir', type=str, default=None,
+    parser.add_argument('--config_dir', type=str,
+                        default = str(Path(__file__).resolve().parents[2] / "config"),
                         help='配置文件目录（默认使用统一配置目录）')
-    parser.add_argument('--output_width', type=int, default=500,
+    parser.add_argument('--output_width', type=int, default = 500,
                         help='输出图像宽度')
-    parser.add_argument('--output_height', type=int, default=1000,
+    parser.add_argument('--output_height', type=int, default = 1000,
                         help='输出图像高度')
     parser.add_argument('--undistort', action='store_true',
+                        default = True,
                         help='是否先进行畸变校正')
-    parser.add_argument('--load_existing', action='store_false',
-                        help='不加载已存在的选点，强制重新选点')
+    parser.add_argument('--load_existing_points', action='store_true',
+                        default = False,
+                        help='加载已存在的选点')
     
      # 解析参数
-    
     args = parser.parse_args()
 
+    image_path = str(Path(__file__).resolve().parents[2] / "config" / "images" /f"cam_{args.camera_name}.jpg")
 
     # ================================ DEBUG ================================
     # 调试时可直接设置参数
-    args.camera_name = 'front'
-    # 使用相对于项目根目录（以脚本文件为基准）的相对路径
-    args.image_path = str(Path(__file__).resolve().parents[2] / "config" / "images" /f"cam_{args.camera_name}.jpg")
-    args.images_dir = str(Path(__file__).resolve().parents[2] / "config" / "images")
-    args.calib_dir = str(Path(__file__).resolve().parents[2] / "config" / "calibration_results")
-    args.config_dir = str(Path(__file__).resolve().parents[2] / "config")
-    args.output_width = 500
-    args.output_height = 1000
-    args.undistort = True 
-    args.load_existing = True
+    # args.camera_name = 'back'
+    # # 使用相对于项目根目录（以脚本文件为基准）的相对路径
+    # args.image_path = str(Path(__file__).resolve().parents[2] / "config" / "images" /f"cam_{args.camera_name}.jpg")
+    # args.images_dir = str(Path(__file__).resolve().parents[2] / "config" / "images")
+    # args.calib_dir = str(Path(__file__).resolve().parents[2] / "config" / "calibration_results")
+    # args.config_dir = str(Path(__file__).resolve().parents[2] / "config")
+    # args.output_width = 500
+    # args.output_height = 1000
+    # args.undistort = True 
+    # args.load_existing_points = True
     # ===================================================================== 
 
     # 检查图像文件
-    if not os.path.exists(args.image_path):
-        print(f"错误: 图像文件不存在: {args.image_path}")
+    if not os.path.exists(image_path):
+        print(f"错误: 图像文件不存在: {image_path}")
         return
     
     # 初始化参数设置（使用统一路径管理）
@@ -289,21 +307,12 @@ def main():
             return
     
     # 读取图像
-    image = cv2.imread(args.image_path)
+    image = cv2.imread(image_path)
     if image is None:
-        print(f"错误: 无法读取图像: {args.image_path}")
+        print(f"错误: 无法读取图像: {image_path}")
         return
     
     print(f"图像尺寸: {image.shape[1]}x{image.shape[0]}")
-    
-    # 畸变校正（可选）
-    if args.undistort:
-        try:
-            fisheye_camera = FisheyeCamera(args.camera_name, param_settings)
-            image = fisheye_camera.undistort_image(image)
-            print("已进行畸变校正")
-        except Exception as e:
-            print(f"畸变校正失败: {e}")
     
     # 创建投影映射器
     mapper = ProjectionMapper(
@@ -312,10 +321,24 @@ def main():
         output_width=args.output_width,
         output_height=args.output_height
     )
+
+    # 畸变校正（可选）
+    if args.undistort:
+        try:
+            fisheye_camera = FisheyeCamera(args.camera_name, param_settings)
+            image, calib_map_x, calib_map_y = fisheye_camera.undistort_image(image)
+
+            mapper.save_calibration_maps(calib_map_x, calib_map_y)
+
+            print("已进行畸变校正")
+        except Exception as e:
+            print(f"畸变校正失败: {e}")
     
-    # 选择对应点
+    
+    
+    # 通过args.load_existing_points，选择:使用yaml文件中非可视化得到的src-dst点对，或是手动选择对应点
     try:
-        src_points, dst_points = mapper.select_birdview_points(image, args.load_existing)
+        src_points, dst_points = mapper.select_birdview_points(image, args.load_existing_points)
         print(f"\n源点:")
         for i, pt in enumerate(src_points):
             print(f"  点{i+1}: ({pt[0]:.1f}, {pt[1]:.1f})")
@@ -346,39 +369,41 @@ def main():
         key = gui.wait_key(30) # 30ms表示刷新间隔
         if key == ord('q'):
             break
-    
+    # 销毁之前的所有窗口，释放资源
+    gui.destroy_all_windows()
+
     # 保存投影映射
-    save = input("\n是否保存投影映射？(y/n，默认y): ").strip().lower()
-    if save != 'n':
-        mapper.save_projection_maps()
-        print("投影映射已保存")
+    # save = input("\n是否保存投影映射？(y/n，默认y): ").strip().lower()
+    # if save != 'n':
+    mapper.save_projection_maps()
+    print("投影映射已保存")
     
     # 保存结果图像
-    save_image = input("是否保存投影结果图像？(y/n，默认n): ").strip().lower()
-    if save_image == 'y':
-        output_image_path = os.path.join(args.images_dir, f"{args.camera_name}_projected.jpg")
-        cv2.imwrite(output_image_path, projected_image)
-        print(f"结果图像已保存到: {output_image_path}")
+    # save_image = input("是否保存投影结果图像？(y/n，默认n): ").strip().lower()
+    # if save_image == 'y':
+    output_image_path = os.path.join(args.images_dir, f"projected_{args.camera_name}.jpg")
+    cv2.imwrite(output_image_path, projected_image)
+    print(f"结果图像已保存到: {output_image_path}")
     
 
     # 在结果图像上使用鼠标点击单个点，绘制不规则多边形，将其区域设为白色掩码，区域外设为黑色掩码
-    mask_choice = input("是否为投影结果图像创建不规则多边形掩码？(y/n，默认n): ").strip().lower()
-    if mask_choice == 'y':
-        mask_points = select_points_interactive(
-            projected_image, 
-            min_points=4, 
-            window_name="按顺序人工选取多边形掩码区域"
-            )
-        if mask_points is not None and len(mask_points) >= 4:
-            print("生成掩码...")
-            mapper.mask = param_settings.compute_mask_from_points( projected_image, mask_points)
-            mapper.save_mask(args.images_dir)
-            gui.show_result(mapper.mask, "Hand-drawn Mask")
-            print("\n按任意键查看结果，按 'q' 退出")
-            while True:
-                key = gui.wait_key(30) # 30ms表示刷新间隔
-                if key == ord('q'):
-                    break
+    # mask_choice = input("是否为投影结果图像创建不规则多边形掩码？(y/n，默认n): ").strip().lower()
+    # if mask_choice == 'y':
+    mask_points = select_points_interactive(
+        projected_image, 
+        min_points=4, 
+        window_name="按顺序人工选取多边形掩码区域"
+        )
+    if mask_points is not None and len(mask_points) >= 4:
+        print("生成掩码...")
+        mapper.mask = param_settings.compute_mask_from_points( projected_image, mask_points)
+        mapper.save_mask(args.images_dir)
+        gui.show_result(mapper.mask, "Hand-drawn Mask")
+        print("\n按任意键查看结果，按 'q' 退出")
+        while True:
+            key = gui.wait_key(30) # 30ms表示刷新间隔
+            if key == ord('q'):
+                break
             
         
     gui.destroy_all_windows()
