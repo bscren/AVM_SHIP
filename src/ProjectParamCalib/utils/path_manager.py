@@ -118,16 +118,18 @@ def get_calibration_file(camera_name, create_dir=True):
         Path: 标定文件路径
     """
     calib_dir = get_calibration_dir(create_dir)
-    return calib_dir / f"{camera_name}_calibration.yaml"
+    return calib_dir / f"calibration_{camera_name}.yaml"
 
 
-def get_projection_file(camera_name, file_type="maps", create_dir=True):
+
+
+def get_projection_file(camera_name, file_type, create_dir=True):
     """
     获取投影映射文件路径
     
     Args:
         camera_name: 相机名称
-        file_type: 文件类型（"maps" 或 "points"）
+        file_type: 文件类型（"calib" 或 "project" 或 "points" 或 "mask"）
         create_dir: 如果目录不存在是否创建
         
     Returns:
@@ -135,12 +137,14 @@ def get_projection_file(camera_name, file_type="maps", create_dir=True):
     """
     proj_dir = get_projection_dir(create_dir)
     
-    if file_type == "maps":
+    if file_type == "calib":
+        return proj_dir / f"calibration_{camera_name}.yaml"
+    elif file_type == "project":
         return proj_dir / f"projection_maps_{camera_name}.yaml"
     elif file_type == "points":
         return proj_dir / f"birdview_points_{camera_name}.yaml"
     elif file_type == "mask":
-        return proj_dir / f"mask_{camera_name}.png"
+        return proj_dir / f"mask_{camera_name}.jpg"
     else:
         raise ValueError(f"未知的文件类型: {file_type}")
 

@@ -72,7 +72,8 @@ class FisheyeCamera:
         
         # 应用映射
         undistorted = cv2.remap(image, self.map_x, self.map_y, cv2.INTER_LINEAR)
-        return undistorted
+        
+        return undistorted, self.map_x, self.map_y
     
     def undistort_fisheye(self, image, balance=0.0):
         """

@@ -61,8 +61,8 @@ class ParamSettings:
         if not os.path.exists(calib_file):
             raise FileNotFoundError(f"标定文件不存在: {calib_file}")
         
-        with open(calib_file, 'r') as f:
-            fs = cv2.FileStorage(calib_file, cv2.FILE_STORAGE_READ)
+        # OpenCV FileStorage expects a string filename; ensure we pass str and don't open the file separately
+        fs = cv2.FileStorage(str(calib_file), cv2.FILE_STORAGE_READ)
         
         # 解析相机内参矩阵
         cam_matrix_data = fs.getNode("camera_matrix").mat()
@@ -93,6 +93,37 @@ class ParamSettings:
             raise ValueError(f"相机 {camera_name} 的参数未加载")
         return self.camera_params[camera_name]
     
+    def save_calibration_maps(self, camera_name, map_x, map_y, output_file=None):
+        """
+        保存标定映射矩阵
+        
+        Args:
+            camera_name: 相机名称
+            map_x: X方向映射矩阵
+            map_y: Y方向映射矩阵
+            output_file: 输出文件路径
+        """
+        if output_file is None:
+            # 使用路径管理工具获取标定映射文件路径
+            from .path_manager import get_projection_file
+            output_file = get_projection_file(camera_name, "calib")
+
+        # 确保路径存在并传入字符串给 OpenCV FileStorage
+        output_file = Path(output_file)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # 使用OpenCV的FileStorage写入YAML格式
+        fs = cv2.FileStorage(str(output_file), cv2.FILE_STORAGE_WRITE)
+        fs.write("camera_name", camera_name)
+        fs.write("map_x", map_x)
+        fs.write("map_y", map_y)
+        fs.release()
+
+        self.camera_params[camera_name]['calib_map_x'] = map_x
+        self.camera_params[camera_name]['calib_map_y'] = map_y
+        
+        print(f"标定映射已保存到: {output_file}")
+
     def save_projection_maps(self, camera_name, map_x, map_y, output_file=None):
         """
         保存投影映射矩阵
@@ -106,24 +137,35 @@ class ParamSettings:
         if output_file is None:
             # 使用路径管理工具获取投影映射文件路径
             from .path_manager import get_projection_file
-            output_file = get_projection_file(camera_name, "maps")
+            output_file = get_projection_file(camera_name, "project")
+
+        # 确保路径存在并传入字符串给 OpenCV FileStorage
+        output_file = Path(output_file)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # 使用OpenCV的FileStorage写入YAML格式
+        fs = cv2.FileStorage(str(output_file), cv2.FILE_STORAGE_WRITE)
+        fs.write("camera_name", camera_name)
+        fs.write("map_x", map_x)
+        fs.write("map_y", map_y)
+        fs.release()
+
+        # projection_data = {
+        #     'camera_name': camera_name,
+        #     'map_x': {
+        #         'shape': list(map_x.shape),
+        #         'data': map_x.flatten().tolist(),
+        #         'dtype': str(map_x.dtype)
+        #     },
+        #     'map_y': {
+        #         'shape': list(map_y.shape),
+        #         'data': map_y.flatten().tolist(),
+        #         'dtype': str(map_y.dtype)
+        #     }
+        # }
         
-        projection_data = {
-            'camera_name': camera_name,
-            'map_x': {
-                'shape': list(map_x.shape),
-                'data': map_x.flatten().tolist(),
-                'dtype': str(map_x.dtype)
-            },
-            'map_y': {
-                'shape': list(map_y.shape),
-                'data': map_y.flatten().tolist(),
-                'dtype': str(map_y.dtype)
-            }
-        }
-        
-        with open(output_file, 'w') as f:
-            yaml.dump(projection_data, f, default_flow_style=False)
+        # with open(output_file, 'w') as f:
+        #     yaml.dump(projection_data, f, default_flow_style=False)
         
         self.projection_maps[camera_name] = {
             'map_x': map_x,
@@ -151,19 +193,15 @@ class ParamSettings:
         if not os.path.exists(map_file):
             raise FileNotFoundError(f"投影映射文件不存在: {map_file}")
         
-        with open(map_file, 'r') as f:
-            map_data = yaml.safe_load(f)
-        
-        # 恢复map_x
-        map_x_shape = tuple(map_data['map_x']['shape'])
-        map_x_data = np.array(map_data['map_x']['data'], dtype=np.float32)
-        map_x = map_x_data.reshape(map_x_shape)
-        
-        # 恢复map_y
-        map_y_shape = tuple(map_data['map_y']['shape'])
-        map_y_data = np.array(map_data['map_y']['data'], dtype=np.float32)
-        map_y = map_y_data.reshape(map_y_shape)
-        
+        # 使用 OpenCV FileStorage 读取 opencv 格式的 YAML
+        fs = cv2.FileStorage(str(map_file), cv2.FILE_STORAGE_READ)
+        if not fs.isOpened():
+            raise IOError(f"无法打开投影映射文件: {map_file}")
+
+        map_x = fs.getNode('map_x').mat()
+        map_y = fs.getNode('map_y').mat()
+        fs.release()
+         
         self.projection_maps[camera_name] = {
             'map_x': map_x,
             'map_y': map_y
@@ -184,23 +222,32 @@ class ParamSettings:
         
         Args:
             camera_name: 相机名称
-            src_points: 源图像中的点 (n, 2)
-            dst_points: 目标鸟瞰图中的点 (n, 2)
-            output_file: 输出文件路径
         """
         if output_file is None:
             # 使用路径管理工具获取点文件路径
             from .path_manager import get_projection_file
             output_file = get_projection_file(camera_name, "points")
         
-        points_data = {
-            'camera_name': camera_name,
-            'src_points': src_points.tolist(),
-            'dst_points': dst_points.tolist()
-        }
-        # 需要改为opencv格式的yaml保存方法
-        with open(output_file, 'w') as f:
-            yaml.dump(points_data, f, default_flow_style=False)
+        # 确保路径存在并传入字符串给 OpenCV FileStorage
+        output_file = Path(output_file)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # 使用OpenCV的FileStorage写入YAML格式
+        fs = cv2.FileStorage(str(output_file), cv2.FILE_STORAGE_WRITE)
+        fs.write("camera_name", camera_name)
+        fs.write("src_points", src_points)
+        fs.write("dst_points", dst_points)
+        fs.release()
+
+
+        # points_data = {
+        #     'camera_name': camera_name,
+        #     'src_points': src_points.tolist(),
+        #     'dst_points': dst_points.tolist()
+        # }
+        # # 需要改为opencv格式的yaml保存方法
+        # with open(output_file, 'w') as f:
+        #     yaml.dump(points_data, f, default_flow_style=False)
         
         print(f"鸟瞰图对应点已保存到: {output_file}")
     
@@ -222,13 +269,23 @@ class ParamSettings:
         if not os.path.exists(points_file):
             return None, None
         
-        with open(points_file, 'r') as f:
-            points_data = yaml.safe_load(f)
-        
-        src_points = np.array(points_data['src_points'], dtype=np.float32)
-        dst_points = np.array(points_data['dst_points'], dtype=np.float32)
-        
-        return src_points, dst_points
+        # 使用 OpenCV FileStorage 读取保存的 src_points / dst_points（opencv yaml 格式）
+        fs = cv2.FileStorage(str(points_file), cv2.FILE_STORAGE_READ)
+        if not fs.isOpened():
+            # 如果无法用 FileStorage 打开，尝试回退到 yaml 解析以兼容旧格式
+            with open(points_file, 'r') as f:
+                points_data = yaml.safe_load(f)
+            src_points = np.array(points_data['src_points'], dtype=np.float32)
+            dst_points = np.array(points_data['dst_points'], dtype=np.float32)
+            return src_points, dst_points
+
+        src_node = fs.getNode('src_points')
+        dst_node = fs.getNode('dst_points')
+        src = src_node.mat()
+        dst = dst_node.mat()
+        fs.release()
+
+        return src, dst
 
     def compute_mask_from_points(self, image, points):
         """
@@ -256,7 +313,7 @@ class ParamSettings:
         else:
             output_file = Path(output_file)
             output_file.parent.mkdir(parents=True, exist_ok=True)
-            output_file = str(output_file / f"mask_{camera_name}.png")
+            output_file = str(output_file / f"mask_{camera_name}.jpg")
 
         cv2.imwrite(output_file, mask)
         print(f"掩码图像已保存到: {output_file}")
