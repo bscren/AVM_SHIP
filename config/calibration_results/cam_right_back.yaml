@@ -35,12 +35,12 @@ scale_xy: !!opencv-matrix
    rows: 2
    cols: 1
    dt: f
-   data: [ 4.00000006e-01, 8.00000012e-01 ]
+   data: [ 10.0000000e-01, 10.0000000e-01 ]
 shift_xy: !!opencv-matrix
    rows: 2
    cols: 1
    dt: f
-   data: [ 150., 0. ]
+   data: [ 0., 0. ]
 avm_dst_points: !!opencv-matrix
    rows: 4
    cols: 2

@@ -20,7 +20,7 @@ from utils.path_manager import get_calibration_dir, get_config_base_dir
 class ProjectionMapper:
     """投影映射类"""
     
-    def __init__(self, camera_name, param_settings, output_width=1000, output_height=1000):
+    def __init__(self, camera_name, param_settings):
         """
         初始化投影映射器
         
@@ -32,8 +32,6 @@ class ProjectionMapper:
         """
         self.camera_name = camera_name
         self.param_settings = param_settings
-        self.output_width = output_width
-        self.output_height = output_height
         
         # 初始化鱼眼相机
         self.fisheye_camera = FisheyeCamera(camera_name, param_settings)
@@ -45,7 +43,7 @@ class ProjectionMapper:
         self.project_map_y = None
         self.homography = None
         
-    def select_birdview_points(self, image, load_existing_points=True):
+    def select_birdview_src_points(self, image, load_existing_points=True):
         """
         选择鸟瞰图对应点
         
@@ -69,8 +67,9 @@ class ProjectionMapper:
         
         # 选择源图像中的点
         src_points = select_points_interactive(
-            image, 
-            min_points=4, 
+            self.camera_name,
+            image,
+            min_points=4,
             window_name=f"Select Source Points - {self.camera_name}"
         )
         
@@ -78,49 +77,11 @@ class ProjectionMapper:
             raise ValueError("至少需要选择4个点")
         
         src_points = np.array(src_points[:4], dtype=np.float32)
-        
-        # ============================DEBUG 定义目标鸟瞰图中的点（默认矩形）=============================
-        # 可以根据实际车辆尺寸调整
-        margin = 100  # 边距
-        # 依据相机的类型，预设对应的目标点默认坐标
-        if self.camera_name == 'front':
-            margin_top = 50
-            dst_points = np.array([
-                [margin, margin_top],  # 左上
-                [self.output_width - margin, margin_top],  # 右上
-                [self.output_width - margin, self.output_height - margin],  # 右下
-                [margin, self.output_height - margin]  # 左下
-            ], dtype=np.float32)
-        elif self.camera_name == 'back':
-            margin_bottom = self.output_height - 50
-            dst_points = np.array([
-                [margin, margin],  # 左上
-                [self.output_width - margin, margin],  # 右上
-                [self.output_width - margin, margin_bottom],  # 右下
-                [margin, margin_bottom]  # 左下
-            ], dtype=np.float32)
-        # ==========================================================================================
 
-        # 可以选择自定义目标点
-        print(f"\n目标点（鸟瞰图）默认设置为:")
-        print(f"  左上: ({dst_points[0][0]:.0f}, {dst_points[0][1]:.0f})")
-        print(f"  右上: ({dst_points[1][0]:.0f}, {dst_points[1][1]:.0f})")
-        print(f"  右下: ({dst_points[2][0]:.0f}, {dst_points[2][1]:.0f})")
-        print(f"  左下: ({dst_points[3][0]:.0f}, {dst_points[3][1]:.0f})")
-        
-        user_input = input("是否自定义目标点？(y/n，默认y): ").strip().lower()
-        if user_input != 'n':
-            print("\n请为目标鸟瞰图选择4个对应点")
-            dst_image = np.zeros((self.output_height, self.output_width, 3), dtype=np.uint8)
-            # 绘制网格帮助定位
-            self._draw_grid(dst_image)
-            dst_points_list = select_points_interactive(
-                dst_image,
-                min_points=4,
-                window_name=f"Select Destination Points - {self.camera_name}"
-            )
-            if dst_points_list is not None and len(dst_points_list) >= 4:
-                dst_points = np.array(dst_points_list[:4], dtype=np.float32)
+
+        # # 加载目标点（鸟瞰图上的点）
+        dst_points = self.param_settings.get_projection_dst_points(self.camera_name)
+        dst_points = np.array(dst_points[:4], dtype=np.float32)
         
         # 保存选点
         self.param_settings.save_birdview_points(self.camera_name, src_points, dst_points)
@@ -170,19 +131,22 @@ class ProjectionMapper:
         homography = self.compute_homography(src_points, dst_points)
         self.homography = homography
         
+        output_width = self.param_settings.proj_image_sizes[self.camera_name][0]
+        output_height = self.param_settings.proj_image_sizes[self.camera_name][1]
+
         # 创建输出图像的坐标网格
-        dst_y, dst_x = np.mgrid[0:self.output_height, 0:self.output_width].astype(np.float32)
+        dst_y, dst_x = np.mgrid[0:output_height, 0:output_width].astype(np.float32)
         
         # 将目标坐标转换为齐次坐标
-        dst_coords = np.stack([dst_x.flatten(), dst_y.flatten(), np.ones(self.output_width * self.output_height)])
+        dst_coords = np.stack([dst_x.flatten(), dst_y.flatten(), np.ones(output_width * output_height)])
         
         # 应用逆单应性变换，得到源图像坐标
         src_coords = np.linalg.inv(homography) @ dst_coords
         src_coords = src_coords / src_coords[2, :]  # 归一化
         
         # 提取x和y坐标
-        src_x = src_coords[0, :].reshape(self.output_height, self.output_width)
-        src_y = src_coords[1, :].reshape(self.output_height, self.output_width)
+        src_x = src_coords[0, :].reshape(output_height, output_width)
+        src_y = src_coords[1, :].reshape(output_height, output_width)
         
         # 限制坐标范围
         src_x = np.clip(src_x, 0, w - 1)
@@ -238,10 +202,11 @@ class ProjectionMapper:
 def main():
     parser = argparse.ArgumentParser(description='生成投影映射矩阵')
     parser.add_argument('--camera_name', type=str, required=False,
-                        default = 'front',choices=['front', 'back', 'left', 'right'],
+                        default = 'right_back',choices=['front', 'back', 'left_front', 'left_back', 'right_front', 'right_back'],
                         help='相机名称')
-    # parser.add_argument('--prior_parameters_path',type = str,default = None,
-    #                     help='先验参数文件路径（如果有的话）')
+    parser.add_argument('--prior_parameters_path',type = str,
+                        default = str(Path(__file__).resolve().parents[2] / "config" / "calibration_results" / "prior_parameters.yaml"),
+                        help='先验参数文件路径（如果有的话）')
     parser.add_argument('--images_dir', type=str,
                         default=str(Path(__file__).resolve().parents[2] / "config" / "images"),
                         help='测试图像目录（如果提供，则忽略 image_path）')
@@ -251,10 +216,6 @@ def main():
     parser.add_argument('--config_dir', type=str,
                         default = str(Path(__file__).resolve().parents[2] / "config"),
                         help='配置文件目录（默认使用统一配置目录）')
-    parser.add_argument('--output_width', type=int, default = 500,
-                        help='输出图像宽度')
-    parser.add_argument('--output_height', type=int, default = 1000,
-                        help='输出图像高度')
     parser.add_argument('--load_existing_points', action='store_true',
                         default = False,
                         help='加载已存在的选点')
@@ -277,9 +238,9 @@ def main():
         # 使用指定的标定目录
         calib_file = os.path.join(args.calib_dir, f"cam_{args.camera_name}.yaml")
     else:
-        # 使用统一路径管理工具
-        from utils.path_manager import get_calibration_file
-        calib_file = str(get_calibration_file(args.camera_name))
+        # 无法指定标定目录，直接退出
+        print("错误: 未指定标定目录")
+        return
     if not os.path.exists(calib_file):
         print(f"警告: 标定文件不存在: {calib_file}")
         return
@@ -297,13 +258,24 @@ def main():
     print(f"图像尺寸: {image.shape[1]}x{image.shape[0]}")
     # -----------------------------------------------------------------------------------
 
+    # 加载监控范围的先验投影参数
+    if args.prior_parameters_path:
+        if not os.path.exists(args.prior_parameters_path):
+            print(f"警告: 先验参数文件不存在: {args.prior_parameters_path}")
+        else:
+            try:
+                param_settings.load_prior_projection_parameters(args.prior_parameters_path)
+                print("已加载先验投影参数")
+            except Exception as e:
+                print(f"加载先验参数失败: {e}")
+    # -----------------------------------------------------------------------------------
+
     # 创建投影映射器
     mapper = ProjectionMapper(
         args.camera_name,
-        param_settings,
-        output_width=args.output_width,
-        output_height=args.output_height
+        param_settings
     )
+    # -----------------------------------------------------------------------------------
 
     # 畸变校正
     try:
@@ -317,7 +289,8 @@ def main():
         print(f"畸变校正失败: {e}")
     
     
-    
+    # -----------------------------------------------------------------------------------
+
     # 通过args.load_existing_points，选择:使用yaml文件中非可视化得到的src-dst点对，或是手动选择对应点对中的src点
     try:
         src_points, dst_points = mapper.select_birdview_src_points(image, args.load_existing_points)
@@ -366,30 +339,31 @@ def main():
     output_image_path = os.path.join(args.images_dir, f"projected_{args.camera_name}.jpg")
     cv2.imwrite(output_image_path, projected_image)
     print(f"结果图像已保存到: {output_image_path}")
-    
+    # -----------------------------------------------------------------------------------
 
+    # ------------------------------------------创建不规则多边形掩码----------------------------------
     # 在结果图像上使用鼠标点击单个点，绘制不规则多边形，将其区域设为白色掩码，区域外设为黑色掩码
     # mask_choice = input("是否为投影结果图像创建不规则多边形掩码？(y/n，默认n): ").strip().lower()
     # if mask_choice == 'y':
-    mask_points = select_points_interactive(
-        projected_image, 
-        min_points=4, 
-        window_name="按顺序人工选取多边形掩码区域"
-        )
-    if mask_points is not None and len(mask_points) >= 4:
-        print("生成掩码...")
-        mapper.mask = param_settings.compute_mask_from_points( projected_image, mask_points)
-        mapper.save_mask(args.images_dir)
-        gui.show_result(mapper.mask, "Hand-drawn Mask")
-        print("\n按任意键查看结果，按 'q' 退出")
-        while True:
-            key = gui.wait_key(30) # 30ms表示刷新间隔
-            if key == ord('q'):
-                break
-            
-        
-    gui.destroy_all_windows()
-    print("完成！")
+    # print("\n创建不规则多边形掩码")
+    # mask_points = select_points_interactive(
+    #     args.camera_name,
+    #     projected_image, 
+    #     min_points=4, 
+    #     window_name="按顺序人工选取多边形掩码区域"
+    #     )
+    # if mask_points is not None and len(mask_points) >= 4:
+    #     print("生成掩码...")
+    #     mapper.mask = param_settings.compute_mask_from_points( projected_image, mask_points)
+    #     mapper.save_mask(args.images_dir)
+    #     gui.show_result(mapper.mask, "Hand-drawn Mask")
+    #     print("\n按任意键查看结果，按 'q' 退出")
+    #     while True:
+    #         key = gui.wait_key(30) # 30ms表示刷新间隔
+    #         if key == ord('q'):
+    #             break
+    # gui.destroy_all_windows()
+    # print("完成！")
 
 
 if __name__ == '__main__':

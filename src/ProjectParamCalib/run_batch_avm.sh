@@ -6,7 +6,7 @@
 set -e
 
 # 默认参数
-CAMERAS="front,back"
+CAMERAS="right_front,right_back"
 LOAD_EXISTING_POINTS="true"
 
 # 解析命令行参数

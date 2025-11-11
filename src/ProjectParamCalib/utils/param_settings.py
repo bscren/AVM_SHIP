@@ -36,8 +36,15 @@ class ParamSettings:
         self.projection_maps = {}
         
 
+    def load_prior_projection_parameters(self, prior_parameters_path=None):
+        """
+        加载鸟瞰图投影的先验参数，如标定点位置、标定块位置、投影图像大小等
+        Args:
+            prior_parameters_path: 先验参数文件路径，如果为None则使用默认路径
+        """
+        if prior_parameters_path is None:
+            prior_parameters_path = self.config_dir / "calibration_results" / "prior_parameters.yaml"
         # 依据先验参数进行初始化,具体算法见config/calibration_results模块中的示意图说明
-        prior_parameters_path = self.config_dir / "calibration_results" / "prior_parameters.yaml"
         fs = cv2.FileStorage(str(prior_parameters_path), cv2.FILE_STORAGE_READ)
         if fs.isOpened():       
             self.ship_pix_size = [fs.getNode('ship_pix_size').mat()[0][0], 
@@ -109,35 +116,35 @@ class ParamSettings:
 
         # 初始化各个摄像头投影图像的标定块源点位置,顺序为左上、右上、右下、左下，顺时针定义,单位：像素
         self.proj_dst_points = {
-            "front": [shift_width , shift_height,
-                    shift_width + calib_block_FA_size[0] , shift_height,
-                    shift_width + calib_block_FA_size[0] , shift_height + calib_block_FA_size[1],
-                    shift_width , shift_height + calib_block_FA_size[1]],
-            "back": [shift_width, inn_shift_height,
-                    shift_width + calib_block_FA_size[0], inn_shift_height,
-                    shift_width + calib_block_FA_size[0], inn_shift_height + calib_block_FA_size[1],
-                    shift_width, inn_shift_height + calib_block_FA_size[1]],
+            "front": [(shift_width , shift_height),
+                    (shift_width + calib_block_FA_size[0] , shift_height),
+                    (shift_width + calib_block_FA_size[0] , shift_height + calib_block_FA_size[1]),
+                    (shift_width , shift_height + calib_block_FA_size[1])],
+            "back": [(shift_width, inn_shift_height),
+                    (shift_width + calib_block_FA_size[0], inn_shift_height),
+                    (shift_width + calib_block_FA_size[0], inn_shift_height + calib_block_FA_size[1]),
+                    (shift_width, inn_shift_height + calib_block_FA_size[1])],
             "left_front": 
-                    [shift_width , shift_height,
-                    shift_width + calib_block_SS_size[0] , shift_height,
-                    shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1],
-                    shift_width , shift_height + calib_block_SS_size[1]],
+                    [(shift_width , shift_height),
+                    (shift_width + calib_block_SS_size[0] , shift_height),
+                    (shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1]),
+                    (shift_width , shift_height + calib_block_SS_size[1])],
             "left_back": 
-                    [shift_width , inn_shift_height,
-                    shift_width + calib_block_SS_size[0] , inn_shift_height,
-                    shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1],
-                    shift_width , inn_shift_height + calib_block_SS_size[1]
+                    [(shift_width , inn_shift_height),
+                    (shift_width + calib_block_SS_size[0] , inn_shift_height),
+                    (shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1]),
+                    (shift_width , inn_shift_height + calib_block_SS_size[1])
                     ],
             "right_front": 
-                    [inn_shift_width , shift_height,
-                    inn_shift_width + calib_block_SS_size[0] , shift_height,
-                    inn_shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1],
-                    inn_shift_width , shift_height + calib_block_SS_size[1]],
+                    [(inn_shift_width , shift_height),
+                    (inn_shift_width + calib_block_SS_size[0] , shift_height),
+                    (inn_shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1]),
+                    (inn_shift_width , shift_height + calib_block_SS_size[1])],
             "right_back": 
-                    [inn_shift_width , inn_shift_height,
-                    inn_shift_width + calib_block_SS_size[0] , inn_shift_height,
-                    inn_shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1],
-                    inn_shift_width , inn_shift_height + calib_block_SS_size[1]
+                    [(inn_shift_width , inn_shift_height),
+                    (inn_shift_width + calib_block_SS_size[0] , inn_shift_height),
+                    (inn_shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1]),
+                    (inn_shift_width , inn_shift_height + calib_block_SS_size[1])
                     ]
         }
     
@@ -147,7 +154,7 @@ class ParamSettings:
             debug_image = np.ones((size[1], size[0], 3), dtype=np.uint8) * 255
             pts = np.array(self.proj_dst_points[camera]).reshape(-1, 2).astype(np.int32)
             cv2.polylines(debug_image, [pts], isClosed=True, color=(0, 0, 255), thickness=2)
-            debug_image_path = self.config_dir / "calibration_results" / f"{camera}_proj_image_size_debug.jpg"
+            debug_image_path = self.config_dir / "calibration_results" / f"schematic_{camera}.jpg"
             cv2.imwrite(str(debug_image_path), debug_image)
             print(f"{camera} 投影图像大小示意图已保存到: {debug_image_path}")
         # ================================DEBUG====================================
@@ -182,8 +189,8 @@ class ParamSettings:
         if calib_file is None:
             # 使用路径管理工具获取标定文件路径
             from .path_manager import get_calibration_file
-            calib_file = get_calibration_file(camera_name)
-        
+            calib_file = get_calibration_file(camera_name,"calib")
+
         if not os.path.exists(calib_file):
             raise FileNotFoundError(f"标定文件不存在: {calib_file}")
         
@@ -198,6 +205,16 @@ class ParamSettings:
         dist_data = fs.getNode("distortion_coefficients").mat()
         dist_coeffs = np.array(dist_data).flatten()
         
+        # 解析校正后画面的横向和纵向放缩比
+        scale_data = fs.getNode("scale_xy").mat()
+        scale_x = float(scale_data[0][0])
+        scale_y = float(scale_data[1][0])
+
+        # 解析校正后画面中心的横向和纵向平移距离
+        translate_data = fs.getNode("shift_xy").mat()
+        translate_x = float(translate_data[0][0])
+        translate_y = float(translate_data[1][0])
+
         # 获取图像尺寸
         resolution_data = fs.getNode("resolution").mat()
         image_width = int(resolution_data[0][0])
@@ -207,7 +224,11 @@ class ParamSettings:
             'camera_matrix': camera_matrix,
             'dist_coeffs': dist_coeffs,
             'image_width': image_width,
-            'image_height': image_height
+            'image_height': image_height,
+            'scale_x': scale_x,
+            'scale_y': scale_y,
+            'translate_x': translate_x,
+            'translate_y': translate_y
         }
         
         print(f"成功加载 {camera_name} 相机标定参数")
@@ -325,6 +346,14 @@ class ParamSettings:
             raise ValueError(f"相机 {camera_name} 的投影映射未加载")
         return self.projection_maps[camera_name]['map_x'], self.projection_maps[camera_name]['map_y']
     
+    def get_projection_dst_points(self, camera_name):
+        """
+        获取单张鸟瞰图投影的目标点位置
+        """
+        # dst保存在程序缓存中，而不是yaml文件中
+        dst = np.array(self.proj_dst_points[camera_name], dtype=np.float32)
+        return dst
+
     def save_birdview_points(self, camera_name, src_points, dst_points, output_file=None):
         """
         保存鸟瞰图对应点
@@ -348,15 +377,6 @@ class ParamSettings:
         fs.write("dst_points", dst_points)
         fs.release()
 
-
-        # points_data = {
-        #     'camera_name': camera_name,
-        #     'src_points': src_points.tolist(),
-        #     'dst_points': dst_points.tolist()
-        # }
-        # # 需要改为opencv格式的yaml保存方法
-        # with open(output_file, 'w') as f:
-        #     yaml.dump(points_data, f, default_flow_style=False)
         
         print(f"鸟瞰图对应点已保存到: {output_file}")
     
@@ -380,19 +400,12 @@ class ParamSettings:
         
         # 使用 OpenCV FileStorage 读取保存的 src_points / dst_points（opencv yaml 格式）
         fs = cv2.FileStorage(str(points_file), cv2.FILE_STORAGE_READ)
-        if not fs.isOpened():
-            # 如果无法用 FileStorage 打开，尝试回退到 yaml 解析以兼容旧格式
-            with open(points_file, 'r') as f:
-                points_data = yaml.safe_load(f)
-            src_points = np.array(points_data['src_points'], dtype=np.float32)
-            dst_points = np.array(points_data['dst_points'], dtype=np.float32)
-            return src_points, dst_points
-
         src_node = fs.getNode('src_points')
-        dst_node = fs.getNode('dst_points')
         src = src_node.mat()
-        dst = dst_node.mat()
         fs.release()
+
+        # dst保存在程序缓存中，而不是yaml文件中
+        dst = self.get_projection_dst_points(camera_name)
 
         return src, dst
 

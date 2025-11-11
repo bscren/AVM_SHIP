@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import time
 from typing import List, Tuple, Callable, Optional
-
+from .path_manager import get_calibration_file
 
 class SimpleGUI:
     """简单的GUI界面类"""
@@ -83,7 +83,8 @@ class SimpleGUI:
         if len(self.points) >= 4:
             pts = np.array(self.points[:4], dtype=np.int32)
             cv2.polylines(self.display_image, [pts], True, (255, 0, 0), 2)
-        
+
+        cv2.resizeWindow(self.window_name, self.display_image.shape[1], self.display_image.shape[0])
         cv2.imshow(self.window_name, self.display_image)
 
     def set_image(self, image):
@@ -178,7 +179,7 @@ class SimpleGUI:
         print("=" * 50)
 
 
-def select_points_interactive(image, min_points=4, window_name="Select Points"):
+def select_points_interactive(camera_name, image, min_points=4, window_name="Select Points"):
     """
     交互式选点函数
     
@@ -198,7 +199,23 @@ def select_points_interactive(image, min_points=4, window_name="Select Points"):
             "OpenCV GUI 不可用，无法进行交互式选点。请在有图形界面的环境运行（X11/Wayland），或使用 X11 转发 / xvfb-run 等手段。"
         )
 
-    gui.set_image(image)
+    # 加载辅助选点的示意图，便于用户理解如何选点
+    schematic_image_path = get_calibration_file(camera_name, "schematic")
+    schematic_image = cv2.imread(str(schematic_image_path))
+    # 将 schematic_image 和 input image 拼接显示，schematic_image在右侧， image在左侧，二者高度取image的高度，比例保持不变
+    if schematic_image is not None:
+        h1, w1 = image.shape[:2]
+        h2, w2 = schematic_image.shape[:2]
+        height = h1
+        w2 = int(w2 * (height / h2))
+        schematic_image = cv2.resize(schematic_image, (w2, height))
+        total_width = w1 + w2 + 10  # 10 像素间隔
+
+        combined_image = np.ones((height, total_width, 3), dtype=np.uint8) * 255
+        combined_image[0:h1, 0:w1] = image
+        combined_image[0:h1, w1 + 10:w1 + 10 + w2] = schematic_image
+
+    gui.set_image(combined_image)
     gui.show_instructions()
 
     while True:

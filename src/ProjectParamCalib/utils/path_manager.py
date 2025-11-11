@@ -106,19 +106,24 @@ def get_projection_dir(create_if_not_exists=True):
     return get_config_path("projection_maps", create_if_not_exists)
 
 
-def get_calibration_file(camera_name, create_dir=True):
+def get_calibration_file(camera_name, file_type, create_dir=True):
     """
     获取标定文件路径
     
     Args:
         camera_name: 相机名称（front, back, left, right）
+        file_type: 文件类型（"calib","schematic")
         create_dir: 如果目录不存在是否创建
         
     Returns:
         Path: 标定文件路径
     """
     calib_dir = get_calibration_dir(create_dir)
-    return calib_dir / f"calibration_{camera_name}.yaml"
+
+    if file_type == "calib":
+        return calib_dir / f"calibration_{camera_name}.yaml"
+    elif file_type == "schematic":
+        return calib_dir / f"schematic_{camera_name}.jpg"
 
 
 
@@ -147,6 +152,7 @@ def get_projection_file(camera_name, file_type, create_dir=True):
         return proj_dir / f"mask_{camera_name}.jpg"
     else:
         raise ValueError(f"未知的文件类型: {file_type}")
+
 
 
 def set_config_dir(config_dir):

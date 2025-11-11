@@ -30,6 +30,10 @@ class FisheyeCamera:
         self.dist_coeffs = self.camera_params['dist_coeffs']
         self.image_width = self.camera_params['image_width']
         self.image_height = self.camera_params['image_height']
+        self.scale_x = self.camera_params.get('scale_x', 1.0)
+        self.scale_y = self.camera_params.get('scale_y', 1.0)
+        self.translate_x = self.camera_params.get('translate_x', 0.0)
+        self.translate_y = self.camera_params.get('translate_y', 0.0)
         
         # 初始化映射矩阵
         self.map_x = None
@@ -49,6 +53,25 @@ class FisheyeCamera:
         Returns:
             校正后的图像
         """
+
+        # 原作者是这样写的，后期可能会用到
+        # def update_undistort_maps(self):
+        #     new_matrix = self.camera_matrix.copy()
+        #     new_matrix[0, 0] *= self.scale_xy[0]
+        #     new_matrix[1, 1] *= self.scale_xy[1]
+        #     new_matrix[0, 2] += self.shift_xy[0]
+        #     new_matrix[1, 2] += self.shift_xy[1]
+        #     width, height = self.resolution
+
+        #     self.undistort_maps = cv2.fisheye.initUndistortRectifyMap(
+        #         self.camera_matrix,
+        #         self.dist_coeffs,
+        #         np.eye(3),
+        #         new_matrix,
+        #         (width, height),
+        #         cv2.CV_16SC2
+        #     )
+        #     return self
         if self.map_x is None or self.map_y is None:
             # 计算新的相机矩阵和映射
             h, w = image.shape[:2]
