@@ -254,7 +254,7 @@ if __name__ == "__main__":
                         help='相机名称')
     parser.add_argument('--save_result', action='store_false',
                         help='不加载已存在的选点，强制重新选点')
-    parser.add_argument('--avm_shapes', type=str, default='1500,1500',
+    parser.add_argument('--avm_size', type=str, default='1500,1500',
                         help='环视图像尺寸，格式为width,height，例如500,1000')
     # 解析参数
     args = parser.parse_args()

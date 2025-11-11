@@ -39,8 +39,95 @@ class ParamSettings:
         self.birdview_params = {
             'output_width': 1000,
             'output_height': 1000,
-            'pixel_per_meter': 50,  # 每米像素数
+            'pixel_per_meter': 500,  # 每米像素数
         }
+
+
+        
+        # --------------------------------------------------------------------
+        # 比例尺:像素/实际长度(单位厘米）
+        self.pixel_per_cm = self.birdview_params['pixel_per_meter'] / 100
+
+        # 实际的 所有标定区域块所在区域组成的总体的的长和宽
+        self.real_calib_area_width = 200  # 单位厘米
+        self.real_calib_area_height = 300  # 单位厘米
+
+        # 实际的 单个标定块的长和宽
+        self.real_calib_block_width = 20  # 单位厘米
+        self.real_calib_block_height = 20  # 单位厘米
+        # 也就是src-dst中对应的dst的宽高
+        self.calib_block_width = self.real_calib_block_width * self.pixel_per_cm
+        self.calib_block_height = self.real_calib_block_height * self.pixel_per_cm
+    
+        # 实际的 向外看的距离
+        self.real_shift_w = 50 # 单位厘米
+        self.real_shift_h = 50 # 单位厘米
+        # 这两个参数决定了在鸟瞰图中向标定区的外侧看多远。这两个值越大，鸟瞰图看的范围就越大，
+        # 相应地远处的物体被投影后的形变也越严重，所以应酌情选择。
+        self.shift_w = self.real_shift_w * self.pixel_per_cm
+        self.shift_h = self.real_shift_h * self.pixel_per_cm
+
+        # 实际的 inn_shift_w 标定区内侧边缘与船只左右两侧的距离，inn_shift_h 标定区内侧边缘与船只前后方的距离。
+        self.real_inn_shift_w = 20  # 单位厘米
+        self.real_inn_shift_h = 50  # 单位厘米
+        # inn_shift_w 标定区内侧边缘与船只左右两侧的距离，inn_shift_h 标定区内侧边缘与船只前后方的距离。
+        self.inn_shift_w = self.real_inn_shift_w * self.pixel_per_cm
+        self.inn_shift_h = self.real_inn_shift_h * self.pixel_per_cm
+
+        # 这两个参数代表鸟瞰图的总宽高，在我们这个项目中标定布宽 6m 高 10m，
+        # 为方便计我们让每个像素对应 1 厘米，于是鸟瞰图的总宽高为 600 + 2*shiftWidth 和 1000 + 2*shiftHeight，
+        total_w = (self.real_calib_area_width + 2 * self.shift_w)*self.pixel_per_cm
+        total_h = (self.real_calib_area_height + 2 * self.shift_h)*self.pixel_per_cm
+
+        # four corners of the rectangular region occupied by the car
+        # top-left (x_left, y_top), bottom-right (x_right, y_bottom)
+        xl = self.shift_w + self.calib_block_width + self.inn_shift_w
+        xr = total_w - xl
+        yt = self.shift_h + self.calib_block_height + self.inn_shift_h
+        yb = total_h - yt
+
+        project_shapes = {
+            "front": (total_w, yt),
+            "back":  (total_w, yt),
+            "left":  (total_h, xl),
+            "right": (total_h, xl)
+        }
+
+        # 标定块对应的四个点，在单张投影图片中对应的像素位置
+        # 通过阅读yaml格式的文件获得，而非写死在代码中
+        # fs = cv2.FileStorage(str(self.config_dir / "birdview_project_keypoints.yaml"), cv2.FILE_STORAGE_READ)
+        # project_keypoints = {camera: fs.getNode(camera).mat() for camera in ["front", "back", "left", "right"]}
+        # self.birdview_project_keypoints = project_keypoints
+
+        # project_keypoints = {
+        #     "front": [(self.shift_w + 120, self.shift_h),
+        #             (self.shift_w + 480, self.shift_h),
+        #             (self.shift_w + 120, self.shift_h + 160),
+        #             (self.shift_w + 480, self.shift_h + 160)],
+
+        #     "back":  [(self.shift_w + 120, self.shift_h),
+        #             (self.shift_w + 480, self.shift_h),
+        #             (self.shift_w + 120, self.shift_h + 160),
+        #             (self.shift_w + 480, self.shift_h + 160)],
+
+        #     "left":  [(self.shift_h + 280, self.shift_w),
+        #             (self.shift_h + 840, self.shift_w),
+        #             (self.shift_h + 280, self.shift_w + 160),
+        #             (self.shift_h + 840, self.shift_w + 160)],
+
+        #     "right": [(self.shift_h + 160, self.shift_w),
+        #             (self.shift_h + 720, self.shift_w),
+        #             (self.shift_h + 160, self.shift_w + 160),
+        #             (self.shift_h + 720, self.shift_w + 160)]
+        # }
+
+        car_image = cv2.imread(os.path.join(os.getcwd(), "images", "car.png"))
+        car_image = cv2.resize(car_image, (xr - xl, yb - yt))
+
+        # --------------------------------------------------------------------
+
+
+
         
     def load_camera_calibration(self, camera_name, calib_file=None):
         """
@@ -149,23 +236,6 @@ class ParamSettings:
         fs.write("map_x", map_x)
         fs.write("map_y", map_y)
         fs.release()
-
-        # projection_data = {
-        #     'camera_name': camera_name,
-        #     'map_x': {
-        #         'shape': list(map_x.shape),
-        #         'data': map_x.flatten().tolist(),
-        #         'dtype': str(map_x.dtype)
-        #     },
-        #     'map_y': {
-        #         'shape': list(map_y.shape),
-        #         'data': map_y.flatten().tolist(),
-        #         'dtype': str(map_y.dtype)
-        #     }
-        # }
-        
-        # with open(output_file, 'w') as f:
-        #     yaml.dump(projection_data, f, default_flow_style=False)
         
         self.projection_maps[camera_name] = {
             'map_x': map_x,
@@ -286,6 +356,7 @@ class ParamSettings:
         fs.release()
 
         return src, dst
+
 
     def compute_mask_from_points(self, image, points):
         """

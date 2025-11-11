@@ -262,22 +262,7 @@ def main():
     
      # 解析参数
     args = parser.parse_args()
-
     image_path = str(Path(__file__).resolve().parents[2] / "config" / "images" /f"cam_{args.camera_name}.jpg")
-
-    # ================================ DEBUG ================================
-    # 调试时可直接设置参数
-    # args.camera_name = 'back'
-    # # 使用相对于项目根目录（以脚本文件为基准）的相对路径
-    # args.image_path = str(Path(__file__).resolve().parents[2] / "config" / "images" /f"cam_{args.camera_name}.jpg")
-    # args.images_dir = str(Path(__file__).resolve().parents[2] / "config" / "images")
-    # args.calib_dir = str(Path(__file__).resolve().parents[2] / "config" / "calibration_results")
-    # args.config_dir = str(Path(__file__).resolve().parents[2] / "config")
-    # args.output_width = 500
-    # args.output_height = 1000
-    # args.undistort = True 
-    # args.load_existing_points = True
-    # ===================================================================== 
 
     # 检查图像文件
     if not os.path.exists(image_path):

@@ -1,0 +1,3 @@
+为run_get_full_avm.py添加功能:
+1. 通过param_settings.py中的相关，能够阅读config文件夹内的/home/tl/AVM_Ship/config/projection_maps/avm_points.yaml，也就是多个拼接图像中dst点在avm中的对应坐标点avm_dst，每个相机的avm_dst的组成结构在yaml文件中为:camera_name，avm_dst；
+2. 获得每个相机对应的avm_dst后，
