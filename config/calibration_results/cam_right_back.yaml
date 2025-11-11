@@ -31,3 +31,30 @@ resolution: !!opencv-matrix
    cols: 1
    dt: i
    data: [ 640 , 480 ]
+scale_xy: !!opencv-matrix
+   rows: 2
+   cols: 1
+   dt: f
+   data: [ 4.00000006e-01, 8.00000012e-01 ]
+shift_xy: !!opencv-matrix
+   rows: 2
+   cols: 1
+   dt: f
+   data: [ 150., 0. ]
+avm_dst_points: !!opencv-matrix
+   rows: 4
+   cols: 2
+   dt: f
+   data: [ 160., 160.,
+           480., 160.,
+           480., 720.,
+           160., 720. ]
+proj_dst_points: !!opencv-matrix
+   rows: 4
+   cols: 2
+   dt: f
+   data: [ 1087., 525.,
+           1662., 512.,
+           1675., 1362.,
+           1300., 1362. ]
+

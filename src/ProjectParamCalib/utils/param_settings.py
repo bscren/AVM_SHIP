@@ -35,97 +35,136 @@ class ParamSettings:
         # 投影映射参数
         self.projection_maps = {}
         
-        # 鸟瞰图参数
-        self.birdview_params = {
-            'output_width': 1000,
-            'output_height': 1000,
-            'pixel_per_meter': 500,  # 每米像素数
-        }
 
+        # 依据先验参数进行初始化,具体算法见config/calibration_results模块中的示意图说明
+        prior_parameters_path = self.config_dir / "calibration_results" / "prior_parameters.yaml"
+        fs = cv2.FileStorage(str(prior_parameters_path), cv2.FILE_STORAGE_READ)
+        if fs.isOpened():       
+            self.ship_pix_size = [fs.getNode('ship_pix_size').mat()[0][0], 
+                                  fs.getNode('ship_pix_size').mat()[0][1]]
+            
+            shift_width = fs.getNode('shift_width').mat()[0][0]
+            shift_height = fs.getNode('shift_height').mat()[0][0]
+            inn_shift_width = fs.getNode('inn_shift_width').mat()[0][0]
+            inn_shift_height = fs.getNode('inn_shift_height').mat()[0][0]
+            calib_block_SS_size = [fs.getNode('calib_block_SS_size').mat()[0][0],
+                                    fs.getNode('calib_block_SS_size').mat()[0][1]]
+            calib_block_FA_size = [fs.getNode('calib_block_FA_size').mat()[0][0],
+                                    fs.getNode('calib_block_FA_size').mat()[0][1]]
+            
+            self.birdview_params = {
+                'output_width': int(shift_width*2 + calib_block_FA_size[0]),
+                'output_height': int(shift_height*2 + calib_block_FA_size[1]*2 + inn_shift_height*2 + self.ship_pix_size[1])
+            }
 
+            fs.release()
         
-        # --------------------------------------------------------------------
-        # 比例尺:像素/实际长度(单位厘米）
-        self.pixel_per_cm = self.birdview_params['pixel_per_meter'] / 100
-
-        # 实际的 所有标定区域块所在区域组成的总体的的长和宽
-        self.real_calib_area_width = 200  # 单位厘米
-        self.real_calib_area_height = 300  # 单位厘米
-
-        # 实际的 单个标定块的长和宽
-        self.real_calib_block_width = 20  # 单位厘米
-        self.real_calib_block_height = 20  # 单位厘米
-        # 也就是src-dst中对应的dst的宽高
-        self.calib_block_width = self.real_calib_block_width * self.pixel_per_cm
-        self.calib_block_height = self.real_calib_block_height * self.pixel_per_cm
-    
-        # 实际的 向外看的距离
-        self.real_shift_w = 50 # 单位厘米
-        self.real_shift_h = 50 # 单位厘米
-        # 这两个参数决定了在鸟瞰图中向标定区的外侧看多远。这两个值越大，鸟瞰图看的范围就越大，
-        # 相应地远处的物体被投影后的形变也越严重，所以应酌情选择。
-        self.shift_w = self.real_shift_w * self.pixel_per_cm
-        self.shift_h = self.real_shift_h * self.pixel_per_cm
-
-        # 实际的 inn_shift_w 标定区内侧边缘与船只左右两侧的距离，inn_shift_h 标定区内侧边缘与船只前后方的距离。
-        self.real_inn_shift_w = 20  # 单位厘米
-        self.real_inn_shift_h = 50  # 单位厘米
-        # inn_shift_w 标定区内侧边缘与船只左右两侧的距离，inn_shift_h 标定区内侧边缘与船只前后方的距离。
-        self.inn_shift_w = self.real_inn_shift_w * self.pixel_per_cm
-        self.inn_shift_h = self.real_inn_shift_h * self.pixel_per_cm
-
-        # 这两个参数代表鸟瞰图的总宽高，在我们这个项目中标定布宽 6m 高 10m，
-        # 为方便计我们让每个像素对应 1 厘米，于是鸟瞰图的总宽高为 600 + 2*shiftWidth 和 1000 + 2*shiftHeight，
-        total_w = (self.real_calib_area_width + 2 * self.shift_w)*self.pixel_per_cm
-        total_h = (self.real_calib_area_height + 2 * self.shift_h)*self.pixel_per_cm
-
-        # four corners of the rectangular region occupied by the car
-        # top-left (x_left, y_top), bottom-right (x_right, y_bottom)
-        xl = self.shift_w + self.calib_block_width + self.inn_shift_w
-        xr = total_w - xl
-        yt = self.shift_h + self.calib_block_height + self.inn_shift_h
-        yb = total_h - yt
-
-        project_shapes = {
-            "front": (total_w, yt),
-            "back":  (total_w, yt),
-            "left":  (total_h, xl),
-            "right": (total_h, xl)
+        # 初始化鸟瞰图各相机标定块的目标点位置,顺序为左上、右上、右下、左下，顺时针定义,单位：像素
+        self.avm_dst_points = {
+            "front": [(shift_width ,                          shift_height),
+                      (shift_width + calib_block_FA_size[0] , shift_height),
+                      (shift_width + calib_block_FA_size[0] , shift_height + calib_block_FA_size[1]),
+                      (shift_width ,                          shift_height + calib_block_FA_size[1])],
+            "back":  [(shift_width ,                          self.birdview_params['output_height'] - shift_height - calib_block_FA_size[1]),
+                      (shift_width + calib_block_FA_size[0] , self.birdview_params['output_height'] - shift_height - calib_block_FA_size[1]),
+                      (shift_width + calib_block_FA_size[0] , self.birdview_params['output_height'] - shift_height),
+                      (shift_width ,                          self.birdview_params['output_height'] - shift_height)],
+            "left_front":
+                    [(shift_width,                          shift_height),
+                     (shift_width + calib_block_SS_size[0], shift_height),
+                     (shift_width + calib_block_SS_size[0], shift_height + calib_block_SS_size[1]),
+                     (shift_width,                          shift_height + calib_block_SS_size[1])],
+            "left_back":
+                    [(shift_width,                          self.birdview_params['output_height'] - shift_height - calib_block_SS_size[1]),
+                     (shift_width + calib_block_SS_size[0], self.birdview_params['output_height'] - shift_height - calib_block_SS_size[1]),
+                     (shift_width + calib_block_SS_size[0], self.birdview_params['output_height'] - shift_height),
+                     (shift_width,                          self.birdview_params['output_height'] - shift_height)],
+            "right_front":
+                    [(self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      shift_height),
+                     (self.birdview_params['output_width'] - shift_width ,                              shift_height),
+                     (self.birdview_params['output_width'] - shift_width ,                              shift_height + calib_block_SS_size[1]),
+                     (self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      shift_height + calib_block_SS_size[1])],
+            "right_back":
+                    [(self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      self.birdview_params['output_height'] - shift_height - calib_block_SS_size[1]),
+                     (self.birdview_params['output_width'] - shift_width ,                              self.birdview_params['output_height'] - shift_height - calib_block_SS_size[1]),
+                     (self.birdview_params['output_width'] - shift_width ,                              self.birdview_params['output_height'] - shift_height),
+                     (self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      self.birdview_params['output_height'] - shift_height)]
         }
 
-        # 标定块对应的四个点，在单张投影图片中对应的像素位置
-        # 通过阅读yaml格式的文件获得，而非写死在代码中
-        # fs = cv2.FileStorage(str(self.config_dir / "birdview_project_keypoints.yaml"), cv2.FILE_STORAGE_READ)
-        # project_keypoints = {camera: fs.getNode(camera).mat() for camera in ["front", "back", "left", "right"]}
-        # self.birdview_project_keypoints = project_keypoints
+        # 初始化各个摄像头投影图像的大小，由 标定块大小+向外看的距离+标定块内侧边缘 与船只的距离决定
+        self.proj_image_sizes = {
+            "front": (self.birdview_params['output_width'],
+                      shift_height + calib_block_FA_size[1] + inn_shift_height),
+            "back":  (self.birdview_params['output_width'],
+                      shift_height + calib_block_FA_size[1] + inn_shift_height),
+            "left_front": (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                          shift_height + calib_block_SS_size[1] + inn_shift_height),
+            "left_back":  (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                          shift_height + calib_block_SS_size[1] + inn_shift_height),
+            "right_front":  (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                          shift_height + calib_block_SS_size[1] + inn_shift_height),
+            "right_back":   (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                          shift_height + calib_block_SS_size[1] + inn_shift_height),
+        }
 
-        # project_keypoints = {
-        #     "front": [(self.shift_w + 120, self.shift_h),
-        #             (self.shift_w + 480, self.shift_h),
-        #             (self.shift_w + 120, self.shift_h + 160),
-        #             (self.shift_w + 480, self.shift_h + 160)],
-
-        #     "back":  [(self.shift_w + 120, self.shift_h),
-        #             (self.shift_w + 480, self.shift_h),
-        #             (self.shift_w + 120, self.shift_h + 160),
-        #             (self.shift_w + 480, self.shift_h + 160)],
-
-        #     "left":  [(self.shift_h + 280, self.shift_w),
-        #             (self.shift_h + 840, self.shift_w),
-        #             (self.shift_h + 280, self.shift_w + 160),
-        #             (self.shift_h + 840, self.shift_w + 160)],
-
-        #     "right": [(self.shift_h + 160, self.shift_w),
-        #             (self.shift_h + 720, self.shift_w),
-        #             (self.shift_h + 160, self.shift_w + 160),
-        #             (self.shift_h + 720, self.shift_w + 160)]
-        # }
-
-        car_image = cv2.imread(os.path.join(os.getcwd(), "images", "car.png"))
-        car_image = cv2.resize(car_image, (xr - xl, yb - yt))
-
-        # --------------------------------------------------------------------
-
+        # 初始化各个摄像头投影图像的标定块源点位置,顺序为左上、右上、右下、左下，顺时针定义,单位：像素
+        self.proj_dst_points = {
+            "front": [shift_width , shift_height,
+                    shift_width + calib_block_FA_size[0] , shift_height,
+                    shift_width + calib_block_FA_size[0] , shift_height + calib_block_FA_size[1],
+                    shift_width , shift_height + calib_block_FA_size[1]],
+            "back": [shift_width, inn_shift_height,
+                    shift_width + calib_block_FA_size[0], inn_shift_height,
+                    shift_width + calib_block_FA_size[0], inn_shift_height + calib_block_FA_size[1],
+                    shift_width, inn_shift_height + calib_block_FA_size[1]],
+            "left_front": 
+                    [shift_width , shift_height,
+                    shift_width + calib_block_SS_size[0] , shift_height,
+                    shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1],
+                    shift_width , shift_height + calib_block_SS_size[1]],
+            "left_back": 
+                    [shift_width , inn_shift_height,
+                    shift_width + calib_block_SS_size[0] , inn_shift_height,
+                    shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1],
+                    shift_width , inn_shift_height + calib_block_SS_size[1]
+                    ],
+            "right_front": 
+                    [inn_shift_width , shift_height,
+                    inn_shift_width + calib_block_SS_size[0] , shift_height,
+                    inn_shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1],
+                    inn_shift_width , shift_height + calib_block_SS_size[1]],
+            "right_back": 
+                    [inn_shift_width , inn_shift_height,
+                    inn_shift_width + calib_block_SS_size[0] , inn_shift_height,
+                    inn_shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1],
+                    inn_shift_width , inn_shift_height + calib_block_SS_size[1]
+                    ]
+        }
+    
+        # =============================DEBUG========================================
+        # 绘制各摄像头投影图像大小示意图
+        for camera, size in self.proj_image_sizes.items():
+            debug_image = np.ones((size[1], size[0], 3), dtype=np.uint8) * 255
+            pts = np.array(self.proj_dst_points[camera]).reshape(-1, 2).astype(np.int32)
+            cv2.polylines(debug_image, [pts], isClosed=True, color=(0, 0, 255), thickness=2)
+            debug_image_path = self.config_dir / "calibration_results" / f"{camera}_proj_image_size_debug.jpg"
+            cv2.imwrite(str(debug_image_path), debug_image)
+            print(f"{camera} 投影图像大小示意图已保存到: {debug_image_path}")
+        # ================================DEBUG====================================
+        # 绘制标定块位置示意图
+        debug_image = np.ones((self.birdview_params['output_height'], self.birdview_params['output_width'], 3), dtype=np.uint8)
+        debug_image[:] = 255  # 将背景设置为白色
+        for camera, points in self.avm_dst_points.items():
+            pts = np.array(points, dtype=np.int32)
+            cv2.polylines(debug_image, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
+            # 在标定块中心写上摄像头名称
+            center_x = int(sum([p[0] for p in points]) / 4)
+            center_y = int(sum([p[1] for p in points]) / 4)
+            cv2.putText(debug_image, camera, (center_x - 30, center_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+        debug_image_path = self.config_dir / "calibration_results" / "avm_calib_block_positions_debug.jpg"
+        cv2.imwrite(str(debug_image_path), debug_image)
+        print(f"标定块位置示意图已保存到: {debug_image_path}")
+        # ================================DEBUG====================================
 
 
         

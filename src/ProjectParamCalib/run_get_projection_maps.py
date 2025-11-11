@@ -240,6 +240,8 @@ def main():
     parser.add_argument('--camera_name', type=str, required=False,
                         default = 'front',choices=['front', 'back', 'left', 'right'],
                         help='相机名称')
+    # parser.add_argument('--prior_parameters_path',type = str,default = None,
+    #                     help='先验参数文件路径（如果有的话）')
     parser.add_argument('--images_dir', type=str,
                         default=str(Path(__file__).resolve().parents[2] / "config" / "images"),
                         help='测试图像目录（如果提供，则忽略 image_path）')
@@ -253,9 +255,6 @@ def main():
                         help='输出图像宽度')
     parser.add_argument('--output_height', type=int, default = 1000,
                         help='输出图像高度')
-    parser.add_argument('--undistort', action='store_true',
-                        default = True,
-                        help='是否先进行畸变校正')
     parser.add_argument('--load_existing_points', action='store_true',
                         default = False,
                         help='加载已存在的选点')
@@ -272,6 +271,7 @@ def main():
     # 初始化参数设置（使用统一路径管理）
     param_settings = ParamSettings(config_dir=args.config_dir)
     
+    # -----------------------------------------------------------------------------------
     # 加载相机标定参数
     if args.calib_dir:
         # 使用指定的标定目录
@@ -280,25 +280,23 @@ def main():
         # 使用统一路径管理工具
         from utils.path_manager import get_calibration_file
         calib_file = str(get_calibration_file(args.camera_name))
-    
     if not os.path.exists(calib_file):
         print(f"警告: 标定文件不存在: {calib_file}")
-        print("将使用默认参数（可能不准确）")
+        return
     else:
         try:
             param_settings.load_camera_calibration(args.camera_name, calib_file)
         except Exception as e:
             print(f"加载标定参数失败: {e}")
             return
-    
     # 读取图像
     image = cv2.imread(image_path)
     if image is None:
         print(f"错误: 无法读取图像: {image_path}")
         return
-    
     print(f"图像尺寸: {image.shape[1]}x{image.shape[0]}")
-    
+    # -----------------------------------------------------------------------------------
+
     # 创建投影映射器
     mapper = ProjectionMapper(
         args.camera_name,
@@ -307,23 +305,22 @@ def main():
         output_height=args.output_height
     )
 
-    # 畸变校正（可选）
-    if args.undistort:
-        try:
-            fisheye_camera = FisheyeCamera(args.camera_name, param_settings)
-            image, calib_map_x, calib_map_y = fisheye_camera.undistort_image(image)
-
-            mapper.save_calibration_maps(calib_map_x, calib_map_y)
-
-            print("已进行畸变校正")
-        except Exception as e:
-            print(f"畸变校正失败: {e}")
-    
-    
-    
-    # 通过args.load_existing_points，选择:使用yaml文件中非可视化得到的src-dst点对，或是手动选择对应点
+    # 畸变校正
     try:
-        src_points, dst_points = mapper.select_birdview_points(image, args.load_existing_points)
+        fisheye_camera = FisheyeCamera(args.camera_name, param_settings)
+        image, calib_map_x, calib_map_y = fisheye_camera.undistort_image(image)
+
+        mapper.save_calibration_maps(calib_map_x, calib_map_y)
+
+        print("已进行畸变校正")
+    except Exception as e:
+        print(f"畸变校正失败: {e}")
+    
+    
+    
+    # 通过args.load_existing_points，选择:使用yaml文件中非可视化得到的src-dst点对，或是手动选择对应点对中的src点
+    try:
+        src_points, dst_points = mapper.select_birdview_src_points(image, args.load_existing_points)
         print(f"\n源点:")
         for i, pt in enumerate(src_points):
             print(f"  点{i+1}: ({pt[0]:.1f}, {pt[1]:.1f})")

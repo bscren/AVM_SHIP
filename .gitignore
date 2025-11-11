@@ -10,3 +10,6 @@ build
 log/
 *.log
 log
+
+# 忽略config中的映射map文件
+config/projection_maps/projection_maps_*.yaml
