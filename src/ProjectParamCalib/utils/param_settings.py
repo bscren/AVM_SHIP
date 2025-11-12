@@ -9,26 +9,32 @@ import yaml
 import numpy as np
 import os
 from pathlib import Path
-from .path_manager import get_config_base_dir, get_calibration_dir, get_projection_dir
+from .path_manager import get_config_base_dir, get_yaml_dir, get_images_dir
 import cv2  
 
 class ParamSettings:
     """参数设置类"""
     
-    def __init__(self, config_dir=None):
+    def __init__(self, images_dir = None, yaml_dir=None):
         """
         初始化参数设置
         
         Args:
-            config_dir: 配置文件目录，如果为None则使用默认路径（支持环境变量）
+            images_dir: 图像文件目录，如果为None则return
+            yaml_dir: yaml文件目录，如果为None则return
         """
-        if config_dir is None:
-            # 使用路径管理工具获取默认配置目录
-            self.config_dir = get_config_base_dir()
+        if yaml_dir is None:
+            return
         else:
-            self.config_dir = Path(config_dir)
-            self.config_dir.mkdir(exist_ok=True)
+            self.yaml_dir = Path(yaml_dir)
+            self.yaml_dir.mkdir(exist_ok=True)
         
+        if images_dir is None:
+            return
+        else:
+            self.images_dir = Path(images_dir)
+            self.images_dir.mkdir(exist_ok=True)
+
         # 相机标定参数
         self.camera_params = {}
         
@@ -43,7 +49,7 @@ class ParamSettings:
             prior_parameters_path: 先验参数文件路径，如果为None则使用默认路径
         """
         if prior_parameters_path is None:
-            prior_parameters_path = self.config_dir / "calibration_results" / "prior_parameters.yaml"
+            prior_parameters_path = self.yaml_dir / "yaml" / "prior_parameters.yaml"
         # 依据先验参数进行初始化,具体算法见config/calibration_results模块中的示意图说明
         fs = cv2.FileStorage(str(prior_parameters_path), cv2.FILE_STORAGE_READ)
         if fs.isOpened():       
@@ -154,7 +160,7 @@ class ParamSettings:
             debug_image = np.ones((size[1], size[0], 3), dtype=np.uint8) * 255
             pts = np.array(self.proj_dst_points[camera]).reshape(-1, 2).astype(np.int32)
             cv2.polylines(debug_image, [pts], isClosed=True, color=(0, 0, 255), thickness=2)
-            debug_image_path = self.config_dir / "calibration_results" / f"schematic_{camera}.jpg"
+            debug_image_path = self.images_dir / f"schematic_{camera}.jpg"
             cv2.imwrite(str(debug_image_path), debug_image)
             print(f"{camera} 投影图像大小示意图已保存到: {debug_image_path}")
         # ================================DEBUG====================================
@@ -168,14 +174,14 @@ class ParamSettings:
             center_x = int(sum([p[0] for p in points]) / 4)
             center_y = int(sum([p[1] for p in points]) / 4)
             cv2.putText(debug_image, camera, (center_x - 30, center_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
-        debug_image_path = self.config_dir / "calibration_results" / "avm_calib_block_positions_debug.jpg"
+        debug_image_path = self.images_dir / "avm_calib_block_positions.jpg"
         cv2.imwrite(str(debug_image_path), debug_image)
         print(f"标定块位置示意图已保存到: {debug_image_path}")
         # ================================DEBUG====================================
 
 
         
-    def load_camera_calibration(self, camera_name, calib_file=None):
+    def load_camera_calibration(self, camera_name, calib_path=None):
         """
         加载相机标定参数
         
@@ -186,17 +192,17 @@ class ParamSettings:
         Returns:
             dict: 包含相机内参和畸变系数的字典
         """
-        if calib_file is None:
+        if calib_path is None:
             # 使用路径管理工具获取标定文件路径
-            from .path_manager import get_calibration_file
-            calib_file = get_calibration_file(camera_name,"calib")
+            from .path_manager import get_yaml_file
+            calib_path = get_yaml_file(camera_name,"calib")
 
-        if not os.path.exists(calib_file):
-            raise FileNotFoundError(f"标定文件不存在: {calib_file}")
+        if not os.path.exists(calib_path):
+            raise FileNotFoundError(f"标定文件不存在: {calib_path}")
         
         # OpenCV FileStorage expects a string filename; ensure we pass str and don't open the file separately
-        fs = cv2.FileStorage(str(calib_file), cv2.FILE_STORAGE_READ)
-        
+        fs = cv2.FileStorage(str(calib_path), cv2.FILE_STORAGE_READ)
+
         # 解析相机内参矩阵
         cam_matrix_data = fs.getNode("camera_matrix").mat()
         camera_matrix = np.array(cam_matrix_data).reshape(3, 3)
@@ -252,8 +258,8 @@ class ParamSettings:
         """
         if output_file is None:
             # 使用路径管理工具获取标定映射文件路径
-            from .path_manager import get_projection_file
-            output_file = get_projection_file(camera_name, "calib")
+            from .path_manager import get_yaml_path
+            output_file = get_yaml_path(camera_name, "calib")
 
         # 确保路径存在并传入字符串给 OpenCV FileStorage
         output_file = Path(output_file)
@@ -283,8 +289,8 @@ class ParamSettings:
         """
         if output_file is None:
             # 使用路径管理工具获取投影映射文件路径
-            from .path_manager import get_projection_file
-            output_file = get_projection_file(camera_name, "project")
+            from .path_manager import get_yaml_path
+            output_file = get_yaml_path(camera_name, "project")
 
         # 确保路径存在并传入字符串给 OpenCV FileStorage
         output_file = Path(output_file)
@@ -363,9 +369,9 @@ class ParamSettings:
         """
         if output_file is None:
             # 使用路径管理工具获取点文件路径
-            from .path_manager import get_projection_file
-            output_file = get_projection_file(camera_name, "points")
-        
+            from .path_manager import get_yaml_path
+            output_file = get_yaml_path(camera_name, "points")
+
         # 确保路径存在并传入字符串给 OpenCV FileStorage
         output_file = Path(output_file)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -392,8 +398,8 @@ class ParamSettings:
         """
         if points_file is None:
             # 使用路径管理工具获取点文件路径
-            from .path_manager import get_projection_file
-            points_file = get_projection_file(camera_name, "points")
+            from .path_manager import get_yaml_path
+            points_file = get_yaml_path(camera_name, "points")
         
         if not os.path.exists(points_file):
             return None, None

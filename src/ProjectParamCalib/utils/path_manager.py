@@ -29,7 +29,6 @@ def get_workspace_root():
     # 如果找不到，使用当前目录的父目录（假设在 src/ProjectParamCalib 下）
     return current_file.parent.parent.parent
 
-
 def get_config_base_dir():
     """
     获取配置文件基础目录
@@ -55,7 +54,6 @@ def get_config_base_dir():
     
     return config_dir
 
-
 def get_config_path(subdir=None, create_if_not_exists=True):
     """
     获取配置子目录路径
@@ -79,36 +77,33 @@ def get_config_path(subdir=None, create_if_not_exists=True):
     
     return config_path
 
-
-def get_calibration_dir(create_if_not_exists=True):
+def get_yaml_dir(create_if_not_exists=True):
     """
-    获取标定文件目录
+    获取yaml文件目录
     
     Args:
         create_if_not_exists: 如果目录不存在是否创建
         
     Returns:
-        Path: 标定文件目录路径
+        Path: yaml文件目录路径
     """
-    return get_config_path("calibration_results", create_if_not_exists)
+    return get_config_path("yaml", create_if_not_exists)
 
-
-def get_projection_dir(create_if_not_exists=True):
+def get_images_dir(create_if_not_exists=True):
     """
-    获取投影映射文件目录
+    获取图像文件目录
     
     Args:
         create_if_not_exists: 如果目录不存在是否创建
         
     Returns:
-        Path: 投影映射文件目录路径
+        Path: 图像文件目录路径
     """
-    return get_config_path("projection_maps", create_if_not_exists)
+    return get_config_path("images", create_if_not_exists)
 
-
-def get_calibration_file(camera_name, file_type, create_dir=True):
+def get_yaml_path(camera_name, file_type, create_dir=True):
     """
-    获取标定文件路径
+    获取yaml文件路径
     
     Args:
         camera_name: 相机名称（front, back, left, right）
@@ -118,42 +113,41 @@ def get_calibration_file(camera_name, file_type, create_dir=True):
     Returns:
         Path: 标定文件路径
     """
-    calib_dir = get_calibration_dir(create_dir)
+    yaml_dir = get_yaml_dir(create_dir)
 
     if file_type == "calib":
-        return calib_dir / f"calibration_{camera_name}.yaml"
-    elif file_type == "schematic":
-        return calib_dir / f"schematic_{camera_name}.jpg"
+        return yaml_dir / f"calibration_{camera_name}.yaml"
+    elif file_type == "project":
+        return yaml_dir / f"projection_maps_{camera_name}.yaml"
+    elif file_type == "points":
+        return yaml_dir / f"birdview_points_{camera_name}.yaml"
 
-
-
-
-def get_projection_file(camera_name, file_type, create_dir=True):
+    else:
+        raise ValueError(f"未知的文件类型: {file_type}")
+    
+def get_images_path(camera_name, file_type, create_dir=True):
     """
-    获取投影映射文件路径
+    获取图像文件路径
     
     Args:
         camera_name: 相机名称
-        file_type: 文件类型（"calib" 或 "project" 或 "points" 或 "mask"）
+        file_type: 文件类型（"schematic"）
         create_dir: 如果目录不存在是否创建
-        
+
     Returns:
-        Path: 投影映射文件路径
+        Path: 图像文件路径
     """
-    proj_dir = get_projection_dir(create_dir)
-    
-    if file_type == "calib":
-        return proj_dir / f"calibration_{camera_name}.yaml"
-    elif file_type == "project":
-        return proj_dir / f"projection_maps_{camera_name}.yaml"
-    elif file_type == "points":
-        return proj_dir / f"birdview_points_{camera_name}.yaml"
+    images_dir = get_images_dir(create_dir)
+    if file_type == "raw":
+        return images_dir / f"cam_{camera_name}.jpg"
+    elif file_type == "schematic":
+        return images_dir / f"schematic_{camera_name}.jpg"
     elif file_type == "mask":
-        return proj_dir / f"mask_{camera_name}.jpg"
+        return images_dir / f"mask_{camera_name}.jpg"
+    elif file_type == "calib_projected":
+        return images_dir / f"projected_{camera_name}.jpg"
     else:
         raise ValueError(f"未知的文件类型: {file_type}")
-
-
 
 def set_config_dir(config_dir):
     """
@@ -169,8 +163,8 @@ def set_config_dir(config_dir):
 if __name__ == "__main__":
     print("工作空间根目录:", get_workspace_root())
     print("配置基础目录:", get_config_base_dir())
-    print("标定文件目录:", get_calibration_dir())
-    print("投影映射目录:", get_projection_dir())
-    print("前视标定文件:", get_calibration_file("front"))
-    print("前视投影映射:", get_projection_file("front", "maps"))
+    print("yaml文件目录:", get_yaml_dir())
+    print("图像文件目录:", get_images_dir())
+    print("前视标定文件:", get_yaml_path("front", "calib"))
+    print("前视图像文件:", get_images_path("front", "schematic"))
 

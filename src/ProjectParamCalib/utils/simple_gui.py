@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import time
 from typing import List, Tuple, Callable, Optional
-from .path_manager import get_calibration_file
+from .path_manager import get_images_path
 
 class SimpleGUI:
     """简单的GUI界面类"""
@@ -200,7 +200,7 @@ def select_points_interactive(camera_name, image, min_points=4, window_name="Sel
         )
 
     # 加载辅助选点的示意图，便于用户理解如何选点
-    schematic_image_path = get_calibration_file(camera_name, "schematic")
+    schematic_image_path = get_images_path(camera_name, "schematic")
     schematic_image = cv2.imread(str(schematic_image_path))
     # 将 schematic_image 和 input image 拼接显示，schematic_image在右侧， image在左侧，二者高度取image的高度，比例保持不变
     if schematic_image is not None:

@@ -1,0 +1,13 @@
+%YAML:1.0
+---
+camera_name: right_front
+src_points: !!opencv-matrix
+   rows: 4
+   cols: 2
+   dt: f
+   data: [ 357., 282., 392., 277., 479., 448., 406., 471. ]
+dst_points: !!opencv-matrix
+   rows: 4
+   cols: 2
+   dt: f
+   data: [ 100., 500., 250., 500., 250., 1600., 100., 1600. ]
