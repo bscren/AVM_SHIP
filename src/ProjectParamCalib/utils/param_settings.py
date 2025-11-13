@@ -64,7 +64,8 @@ class ParamSettings:
                                     fs.getNode('calib_block_SS_size').mat()[0][1]]
             calib_block_FA_size = [fs.getNode('calib_block_FA_size').mat()[0][0],
                                     fs.getNode('calib_block_FA_size').mat()[0][1]]
-            
+            overlap_inn_height = fs.getNode('overlap_inn_height').mat()[0][0]
+
             self.birdview_params = {
                 'output_width': int(shift_width*2 + calib_block_FA_size[0]),
                 'output_height': int(shift_height*2 + calib_block_FA_size[1]*2 + inn_shift_height*2 + self.ship_pix_size[1])
@@ -78,10 +79,20 @@ class ParamSettings:
                       (shift_width + calib_block_FA_size[0] , shift_height),
                       (shift_width + calib_block_FA_size[0] , shift_height + calib_block_FA_size[1]),
                       (shift_width ,                          shift_height + calib_block_FA_size[1])],
+            "right_front":
+                    [(self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      shift_height),
+                     (self.birdview_params['output_width'] - shift_width ,                              shift_height),
+                     (self.birdview_params['output_width'] - shift_width ,                              shift_height + calib_block_SS_size[1]),
+                     (self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      shift_height + calib_block_SS_size[1])],
+            "right_back":
+                    [(self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      self.birdview_params['output_height'] - shift_height - calib_block_SS_size[1]),
+                     (self.birdview_params['output_width'] - shift_width ,                              self.birdview_params['output_height'] - shift_height - calib_block_SS_size[1]),
+                     (self.birdview_params['output_width'] - shift_width ,                              self.birdview_params['output_height'] - shift_height),
+                     (self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      self.birdview_params['output_height'] - shift_height)],
             "back":  [(shift_width ,                          self.birdview_params['output_height'] - shift_height - calib_block_FA_size[1]),
-                      (shift_width + calib_block_FA_size[0] , self.birdview_params['output_height'] - shift_height - calib_block_FA_size[1]),
-                      (shift_width + calib_block_FA_size[0] , self.birdview_params['output_height'] - shift_height),
-                      (shift_width ,                          self.birdview_params['output_height'] - shift_height)],
+                        (shift_width + calib_block_FA_size[0] , self.birdview_params['output_height'] - shift_height - calib_block_FA_size[1]),
+                        (shift_width + calib_block_FA_size[0] , self.birdview_params['output_height'] - shift_height),
+                        (shift_width ,                          self.birdview_params['output_height'] - shift_height)],
             "left_front":
                     [(shift_width,                          shift_height),
                      (shift_width + calib_block_SS_size[0], shift_height),
@@ -92,32 +103,23 @@ class ParamSettings:
                      (shift_width + calib_block_SS_size[0], self.birdview_params['output_height'] - shift_height - calib_block_SS_size[1]),
                      (shift_width + calib_block_SS_size[0], self.birdview_params['output_height'] - shift_height),
                      (shift_width,                          self.birdview_params['output_height'] - shift_height)],
-            "right_front":
-                    [(self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      shift_height),
-                     (self.birdview_params['output_width'] - shift_width ,                              shift_height),
-                     (self.birdview_params['output_width'] - shift_width ,                              shift_height + calib_block_SS_size[1]),
-                     (self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      shift_height + calib_block_SS_size[1])],
-            "right_back":
-                    [(self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      self.birdview_params['output_height'] - shift_height - calib_block_SS_size[1]),
-                     (self.birdview_params['output_width'] - shift_width ,                              self.birdview_params['output_height'] - shift_height - calib_block_SS_size[1]),
-                     (self.birdview_params['output_width'] - shift_width ,                              self.birdview_params['output_height'] - shift_height),
-                     (self.birdview_params['output_width'] - shift_width - calib_block_SS_size[0],      self.birdview_params['output_height'] - shift_height)]
+
         }
 
-        # 初始化各个摄像头投影图像的大小，由 标定块大小+向外看的距离+标定块内侧边缘 与船只的距离决定
+        # 初始化各个摄像头投影图像的大小，由 标定块大小+向外看的距离+标定块内侧边缘距离 与船只的距离决定
         self.proj_image_sizes = {
             "front": (self.birdview_params['output_width'],
                       shift_height + calib_block_FA_size[1] + inn_shift_height),
-            "back":  (self.birdview_params['output_width'],
-                      shift_height + calib_block_FA_size[1] + inn_shift_height),
-            "left_front": (shift_width + calib_block_SS_size[0] + inn_shift_width,
-                          shift_height + calib_block_SS_size[1] + inn_shift_height),
-            "left_back":  (shift_width + calib_block_SS_size[0] + inn_shift_width,
-                          shift_height + calib_block_SS_size[1] + inn_shift_height),
             "right_front":  (shift_width + calib_block_SS_size[0] + inn_shift_width,
-                          shift_height + calib_block_SS_size[1] + inn_shift_height),
+                          shift_height + calib_block_SS_size[1] + overlap_inn_height),
             "right_back":   (shift_width + calib_block_SS_size[0] + inn_shift_width,
-                          shift_height + calib_block_SS_size[1] + inn_shift_height),
+                          shift_height + calib_block_SS_size[1] + overlap_inn_height),
+            "left_front": (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                          shift_height + calib_block_SS_size[1] + overlap_inn_height),
+            "left_back":  (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                          shift_height + calib_block_SS_size[1] + overlap_inn_height),
+            "back":  (self.birdview_params['output_width'],
+                    shift_height + calib_block_FA_size[1] + inn_shift_height)
         }
 
         # 初始化各个摄像头投影图像的标定块源点位置,顺序为左上、右上、右下、左下，顺时针定义,单位：像素
@@ -130,17 +132,6 @@ class ParamSettings:
                     (shift_width + calib_block_FA_size[0], inn_shift_height),
                     (shift_width + calib_block_FA_size[0], inn_shift_height + calib_block_FA_size[1]),
                     (shift_width, inn_shift_height + calib_block_FA_size[1])],
-            "left_front": 
-                    [(shift_width , shift_height),
-                    (shift_width + calib_block_SS_size[0] , shift_height),
-                    (shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1]),
-                    (shift_width , shift_height + calib_block_SS_size[1])],
-            "left_back": 
-                    [(shift_width , inn_shift_height),
-                    (shift_width + calib_block_SS_size[0] , inn_shift_height),
-                    (shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1]),
-                    (shift_width , inn_shift_height + calib_block_SS_size[1])
-                    ],
             "right_front": 
                     [(inn_shift_width , shift_height),
                     (inn_shift_width + calib_block_SS_size[0] , shift_height),
@@ -151,9 +142,95 @@ class ParamSettings:
                     (inn_shift_width + calib_block_SS_size[0] , inn_shift_height),
                     (inn_shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1]),
                     (inn_shift_width , inn_shift_height + calib_block_SS_size[1])
-                    ]
+                    ],
+            "left_front": 
+                    [(shift_width , shift_height),
+                    (shift_width + calib_block_SS_size[0] , shift_height),
+                    (shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1]),
+                    (shift_width , shift_height + calib_block_SS_size[1])],
+            "left_back": 
+                    [(shift_width , inn_shift_height),
+                    (shift_width + calib_block_SS_size[0] , inn_shift_height),
+                    (shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1]),
+                    (shift_width , inn_shift_height + calib_block_SS_size[1])
+                    ]            
         }
-    
+        
+        # 各个视角的重叠区域的尺寸(w,h)
+        overlap_blocks = {
+            "L_RF": (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                    shift_height + calib_block_FA_size[1] + inn_shift_height),
+            "RF_RB": (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                     2 * (calib_block_SS_size[1] + shift_height + overlap_inn_height) - self.birdview_params['output_height']),
+            "RB_B": (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                    shift_height + calib_block_FA_size[1] + inn_shift_height),
+            "B_LB": (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                    shift_height + calib_block_FA_size[1] + inn_shift_height),
+            "LB_LF": (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                     2 * (calib_block_SS_size[1] + shift_height + overlap_inn_height) - self.birdview_params['output_height']),
+            "LF_F": (shift_width + calib_block_SS_size[0] + inn_shift_width,
+                    shift_height + calib_block_FA_size[1] + inn_shift_height)
+        }
+
+
+        # 重叠区域对（顺时针），及其对应的重叠区域分割逻辑
+        self.crop_overlap_logics = {
+        # 切割逻辑：键是图像对，值是切割坐标（x,y），而不是长度
+            ("front", "right_front"): (
+                self.proj_image_sizes["front"][0] - overlap_blocks["L_RF"][0],  # 右侧切割像素
+                overlap_blocks["L_RF"][1]  # 顶部切割像素
+            ),
+            ("right_front", "right_back"): (
+                self.proj_image_sizes["right_front"][1] - overlap_blocks["RF_RB"][1],  # 底部切割像素
+                overlap_blocks["RF_RB"][1]  # 顶部切割像素
+            ),
+            ("right_back", "back"): (
+                self.proj_image_sizes["right_back"][1] - overlap_blocks["RB_B"][1],  # 底部切割像素
+                self.proj_image_sizes["back"][0] - overlap_blocks["RB_B"][0]  # 右侧切割像素
+            ),
+            ("back", "left_back"): (
+                overlap_blocks["B_LB"][0],  # 左侧切割像素
+                self.proj_image_sizes["back"][1] - overlap_blocks["B_LB"][1]  # 底部切割像素
+            ),
+            ("left_back", "left_front"): (
+                overlap_blocks["LB_LF"][1],  # 顶部切割像素
+                self.proj_image_sizes["left_front"][1] - overlap_blocks["LB_LF"][1]  # 底部切割像素
+            ),
+            ("left_front", "front"): (
+                overlap_blocks["LF_F"][1],  # 顶部切割像素
+                overlap_blocks["LF_F"][0]  # 左侧切割像素
+            )
+
+        }
+
+        # 单张图像边缘裁剪逻辑,每个键值对应:先左后右，先上后下，具体先左后右还是先上后下，由键值在后续引用时决定
+        self.crop_edge_logics = {
+            "front": (
+                overlap_blocks["LF_F"][0],  # 左侧切割像素
+                self.proj_image_sizes["front"][0] - overlap_blocks["L_RF"][0],  # 右侧切割像素  
+                       ), 
+            "right_front": (
+                overlap_blocks["RF_RB"][1], # 顶部切割像素
+                self.proj_image_sizes["right_front"][1] - overlap_blocks["RF_RB"][1],  # 底部切割像素
+            ),
+            "right_back": (
+                overlap_blocks["RF_RB"][1], # 顶部切割像素
+                self.proj_image_sizes["right_back"][1] - overlap_blocks["RB_B"][1],  # 底部切割像素
+            ),
+            "back": (
+                overlap_blocks["RB_B"][0],  # 左侧切割像素
+                self.proj_image_sizes["back"][0] - overlap_blocks["RB_B"][0],  # 右侧切割像素
+            ),
+            "left_back": (
+                overlap_blocks["LB_LF"][1],  # 顶端切割像素
+                self.proj_image_sizes["left_back"][1] - overlap_blocks["LB_LF"][1],  # 底部切割像素
+            ),
+            "left_front": (
+                overlap_blocks["LF_F"][0],  # 顶端切割像素
+                self.proj_image_sizes["left_front"][0] - overlap_blocks["LF_F"][0],  # 底部切割像素
+            )
+        }
+
         # =============================DEBUG========================================
         # 绘制各摄像头投影图像大小示意图
         for camera, size in self.proj_image_sizes.items():

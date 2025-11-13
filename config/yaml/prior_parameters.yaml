@@ -35,5 +35,11 @@ calib_block_FA_size: !!opencv-matrix
     cols: 2
     dt: i
     data: [ 700 , 150 ]
+overlap_inn_height: !!opencv-matrix
+    rows: 1
+    cols: 1
+    dt: i
+    data: [ 50 ]
+...
 
 
