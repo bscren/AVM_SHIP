@@ -40,7 +40,7 @@ class AVMImageStitcher:
     def initialize_projected_image(self, camera_names):
         """初始化已投影图片字典"""
         for cam in camera_names:
-            self.projected_image[cam]= self.load_image_mask(cam, type="calib_projected")
+            self.projected_image[cam]= self.load_image_or_mask(cam, type="calib_projected")
 
     def initialize_overlap_pairs(self, camera_names):
         """初始化重叠区域对
@@ -66,44 +66,73 @@ class AVMImageStitcher:
 
     def get_projection_offset(self, camera_name):
         """计算每个相机投影图片在AVM图上的左上角坐标（根据目标点位置）"""
-        # 取proj_dst_points和avm_dst_points的左上角点
+        # 取proj_dst_points和avm_dst_points的左上角点，形式是(x,y)，而当前代码中普遍的顺序是(y,x)
         proj_topleft = np.array(self.proj_dst_points[camera_name][0])
         avm_topleft = np.array(self.avm_dst_points[camera_name][0])
         offset = avm_topleft - proj_topleft
-        return tuple(offset.astype(int))
+        # 返回 (y, x) 顺序，方便 NumPy 切片
+        return int(offset[1]), int(offset[0])
+    
 
-    def load_image_mask(self, camera_name, type="mask"):
-        """加载相机的掩码图片"""
-        from utils.path_manager import  get_images_path
-        img_mask_path = get_images_path(camera_name, type)
-        if not os.path.exists(img_mask_path):
-            raise FileNotFoundError(f"未找到掩码图片: {img_mask_path}")
-        img = cv2.imread(str(img_mask_path), cv2.IMREAD_GRAYSCALE)
+    def load_image_or_mask(self, camera_name, type="calib_projected"):
+        if type == "calib_projected":
+            """type = "calib_projected" 加载已投影的图片（已矫正+投影）"""
+            from utils.path_manager import  get_images_path
+            img_projected = get_images_path(camera_name, "calib_projected")
+            if not os.path.exists(img_projected):
+                raise FileNotFoundError(f"未找到投影图片: {img_projected}")
+            img = cv2.imread(str(img_projected))
+
+        elif type == "mask":
+            """type="mask",加载相机的掩码图片"""
+            from utils.path_manager import  get_images_path
+            img_mask_path = get_images_path(camera_name, type)
+            if not os.path.exists(img_mask_path):
+                raise FileNotFoundError(f"未找到掩码图片: {img_mask_path}")
+            img = cv2.imread(str(img_mask_path), cv2.IMREAD_GRAYSCALE)
         return img
-
+    
     def stitch_back_edge_region(self, cam_name, img, edged_img1, edged_img2):
         """将加权后的边缘区域放回原图"""
         # 根据相机名称获取裁剪逻辑: 先左后右，先上后下，具体先左后右还是先上后下，由键值在后续引用时决定
         (sacle_1 , scale_2) = self.param_settings.crop_edge_logics.get(cam_name, {})
         # img.shape: (height, width, channels)
+        # if cam_name == "front":
+        #     edged_img1 = img[:, 0:sacle_1]  # 左侧
+        #     edged_img2 = img[:, scale_2: img.shape[1]]  # 右侧
+        # if cam_name == "right_front":
+        #     edged_img1 = img[0:sacle_1, :]  # 顶部
+        #     edged_img2 = img[scale_2: img.shape[0], :]  # 底部
+        # if cam_name == "right_back":
+        #     edged_img1 = img[0:sacle_1, :]  # 顶部
+        #     edged_img2 = img[scale_2: img.shape[0], :]  # 底部
+        # if cam_name == "back":
+        #     edged_img1 = img[:, 0:sacle_1]  # 左侧
+        #     edged_img2 = img[:, scale_2: img.shape[1]]  # 右侧
+        # if cam_name == "left_back":
+        #     edged_img1 = img[0:sacle_1, :]  # 顶部
+        #     edged_img2 = img[scale_2: img.shape[0], :]  # 底部
+        # if cam_name == "left_front":
+        #     edged_img1 = img[0:sacle_1, :]  # 左侧
+        #     edged_img2 = img[scale_2: img.shape[0],:]  # 右侧
         if cam_name == "front":
             img[:, 0:sacle_1] = edged_img1  # 左侧
-            img[:, img.shape[1] - scale_2: img.shape[1]] = edged_img2  # 右侧
+            img[:, scale_2: img.shape[1]] = edged_img2  # 右侧
         if cam_name == "right_front":
             img[0:sacle_1, :] = edged_img1  # 顶部
-            img[img.shape[0] - scale_2: img.shape[0], :] = edged_img2  # 底部
+            img[scale_2: img.shape[0], :] = edged_img2  # 底部
         if cam_name == "right_back":
             img[0:sacle_1, :] = edged_img1  # 顶部
-            img[img.shape[0] - scale_2: img.shape[0], :] = edged_img2  # 底部
+            img[scale_2: img.shape[0], :] = edged_img2  # 底部
         if cam_name == "back":
             img[:, 0:sacle_1] = edged_img1  # 左侧
-            img[:, img.shape[1] - scale_2: img.shape[1]] = edged_img2  # 右侧
+            img[:, scale_2: img.shape[1]] = edged_img2  # 右侧
         if cam_name == "left_back":
-            img[img.shape[0] - scale_2: img.shape[0], :] = edged_img1  # 底部
-            img[0:sacle_1, :] = edged_img2  # 顶部
+            img[0:sacle_1, :] = edged_img1  # 顶部
+            img[scale_2: img.shape[0], :] = edged_img2  # 底部
         if cam_name == "left_front":
-            img[:, 0:sacle_1] = edged_img1  # 左侧
-            img[:, img.shape[1] - scale_2: img.shape[1]] = edged_img2  # 右侧
+            img[0:sacle_1, :] = edged_img1  # 左侧
+            img[scale_2: img.shape[0],:] = edged_img2  # 右侧
         return img
     
 
@@ -114,22 +143,22 @@ class AVMImageStitcher:
         # img.shape: (height, width, channels)
         if cam_name == "front":
             edged_img1 = img[:, 0:sacle_1]  # 左侧
-            edged_img2 = img[:, img.shape[1] - scale_2: img.shape[1]]  # 右侧
+            edged_img2 = img[:, scale_2: img.shape[1]]  # 右侧
         if cam_name == "right_front":
             edged_img1 = img[0:sacle_1, :]  # 顶部
-            edged_img2 = img[img.shape[0] - scale_2: img.shape[0], :]  # 底部
+            edged_img2 = img[scale_2: img.shape[0], :]  # 底部
         if cam_name == "right_back":
             edged_img1 = img[0:sacle_1, :]  # 顶部
-            edged_img2 = img[img.shape[0] - scale_2: img.shape[0], :]  # 底部
+            edged_img2 = img[scale_2: img.shape[0], :]  # 底部
         if cam_name == "back":
             edged_img1 = img[:, 0:sacle_1]  # 左侧
-            edged_img2 = img[:, img.shape[1] - scale_2: img.shape[1]]  # 右侧
+            edged_img2 = img[:, scale_2: img.shape[1]]  # 右侧
         if cam_name == "left_back":
-            edged_img1 = img[img.shape[0] - scale_2: img.shape[0], :]  # 底部
-            edged_img2 = img[0:sacle_1, :]  # 顶部
+            edged_img1 = img[0:sacle_1, :]  # 顶部
+            edged_img2 = img[scale_2: img.shape[0], :]  # 底部
         if cam_name == "left_front":
-            edged_img1 = img[:, 0:sacle_1]  # 左侧
-            edged_img2 = img[:, img.shape[1] - scale_2: img.shape[1]]  # 右侧
+            edged_img1 = img[0:sacle_1, :]  # 左侧
+            edged_img2 = img[scale_2: img.shape[0],:]  # 右侧
         return edged_img1, edged_img2
     
 
@@ -143,7 +172,7 @@ class AVMImageStitcher:
             cropfrom_img1 = img1[:, img1.shape[1] - cam1_scale: img1.shape[1]]
             cropfrom_img2 = img2[0:cam2_scale, :]
         elif (cam1_name, cam2_name) == ("right_front", "right_back"):
-            cropfrom_img1 = img1[img1.shape[0] - cam1_scale: img1.shape[0], :]
+            cropfrom_img1 = img1[cam1_scale: img1.shape[0], :]
             cropfrom_img2 = img2[0:cam2_scale, :]
         elif (cam1_name, cam2_name) == ("right_back", "back"):
             cropfrom_img1 = img1[img1.shape[0] - cam1_scale: img1.shape[0], :]
@@ -176,6 +205,7 @@ class AVMImageStitcher:
         # cropfrom_img2 = img2[:, 0:overlap_width2]
 
         # return cropfrom_img1, cropfrom_img`2
+    
     def get_overlap_region_mask(self, cropfrom_img1, cropfrom_img2):
         """计算两张裁剪图片的重叠区域掩码"""
         # 假设重叠区域掩码是两张裁剪图片的按位与操作
@@ -292,10 +322,10 @@ class AVMImageStitcher:
             掩码序号由左上角从零开始，顺时针
         """
         for cam1_name, cam2_name in self.overlap_pairs:
-            # 计算重叠区域的掩码
+            # 计算重叠区域的掩码 G_right_down
             G1, M = self.get_weight_mask_matrix(cam1_name, cam2_name)
-            self.weights[cam1_name].G_left_top = G1 # 权重矩阵 in cam1's overlap region
-            self.weights[cam2_name].G_right_down = 1 - G1 # 权重矩阵 in cam2's overlap region
+            self.weights[cam1_name].G_right_down = G1 # 权重矩阵 in cam1's overlap region
+            self.weights[cam2_name].G_left_top = 1 - G1 # 权重矩阵 in cam2's overlap region
             self.blend_masks[(cam1_name, cam2_name)] = M
             # 可视化M（掩码矩阵）
             # M0是二值图像（0或255），直接作为灰度图显示
@@ -327,45 +357,62 @@ class AVMImageStitcher:
         print("将船只图像复制到AVM大图上（预留接口，当前未实现）")
         return
 
-        
-    def load_projected_image(self, camera_name):
-        """加载已投影的图片（已矫正+投影）"""
-        from utils.path_manager import  get_images_path
-        img_projected = get_images_path(camera_name, "calib_projected")
-        if not os.path.exists(img_projected):
-            raise FileNotFoundError(f"未找到投影图片: {img_projected}")
-        img = cv2.imread(str(img_projected))
-        return img
 
-    def stitch_all_parts(self, camera_names):
+    def blend_overlap_region(self, cam1_name, cam2_name):
+        """
+        对两张图片的重叠区域进行融合，并返回融合后的区域
+        """
+        imgA = self.projected_image[cam1_name]
+        imgB = self.projected_image[cam2_name]
+        # 裁剪重叠区域
+        cropA, cropB = self.crop_overlap_region(cam1_name, cam2_name, imgA, imgB)
+        # 获得重叠掩码
+        overlapMask = self.get_overlap_region_mask(cropA, cropB)
+        # 获得权重矩阵
+        G1 = self.weights[cam1_name].G_right_down[..., np.newaxis]
+        G2 = self.weights[cam2_name].G_left_top[..., np.newaxis]
+        # 融合公式
+        blend = (cropA.astype(np.float32) * G1 + cropB.astype(np.float32) * G2).astype(np.uint8)
+        cv2.imshow("Blended Overlap Region", blend)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        return blend, overlapMask
+    
+    def stitch_all_parts(self):
         """将所有投影图片拼接到AVM大图上"""
         avm_img = np.zeros((self.avm_height, self.avm_width, 3), dtype=np.uint8)
         blend_masks = {}
-        for cam in camera_names:
-            proj_img = self.load_projected_image(cam)
+        # 先将所有非重叠区域直接粘贴到AVM图上
+        for cam_name, img in self.projected_image.items():
+            offset_y, offset_x = self.get_projection_offset(cam_name)
+            h, w = img.shape[0:2]
+            avm_img[offset_y:offset_y + h, offset_x:offset_x + w] = img
+        cv2.imwrite("avm_initial.jpg", avm_img)
 
-            # 拆分后乘以权重掩码再拼接
-            # 拆分
-            crop_edge_region_left_top, crop_edge_region_right_top = self.crop_edge_region(cam, proj_img)
-            # 乘以权重掩码
-            if self.weights[cam].G_left_top is not None:
-                weighted_left_top = (crop_edge_region_left_top.astype(np.float32) * self.weights[cam].G_left_top[..., np.newaxis]).astype(np.uint8)
-            else:
-                weighted_left_top = crop_edge_region_left_top
-            if self.weights[cam].G_right_down is not None:
-                weighted_right_down = (crop_edge_region_right_top.astype(np.float32) * self.weights[cam].G_right_down[..., np.newaxis]).astype(np.uint8)
-            else:
-                weighted_right_down = crop_edge_region_right_top
-            # 将加权后的边缘区域放回原图
-            proj_img = self.stitch_back_edge_region(cam, proj_img, weighted_left_top, weighted_right_down)
+        # 然后再用融合后的重叠区域（blend）覆盖原图的重叠部分
+        # 所有相机的重叠区域，统一拆分、加权、粘贴，不能单独处理某个相机，否则会导致像素权重无法叠加
 
+        for cam1_name, cam2_name in self.overlap_pairs:
+            blend, overlapMask = self.blend_overlap_region(cam1_name, cam2_name)
+            # 计算重叠区域在AVM图上的位置
+            cam1_scale, cam2_scale = self.param_settings.crop_overlap_logics.get((cam1_name, cam2_name), {})
+            offset1_y, offset1_x = self.get_projection_offset(cam1_name)
 
-            offset = self.get_projection_offset(cam)
-            h, w = proj_img.shape[:2]
-            # 粘贴到大图
-            avm_img[offset[1]:offset[1]+h, offset[0]:offset[0]+w] = proj_img
-            # 预留渐变掩码接口
-            # blend_masks[cam] = self.get_weights_and_blendmasks(cam, (h, w), offset)
+            if (cam1_name, cam2_name) == ("front", "right_front"):
+                avm_img[offset1_y:offset1_y + blend.shape[0], offset1_x + cam1_scale:offset1_x + cam1_scale + blend.shape[1]] = blend
+            elif (cam1_name, cam2_name) == ("right_front", "right_back"):
+                avm_img[offset1_y + cam1_scale:offset1_y + cam1_scale + blend.shape[0], offset1_x:offset1_x + blend.shape[1]] = blend
+            elif (cam1_name, cam2_name) == ("right_back", "back"):
+                avm_img[offset1_y + cam1_scale:offset1_y + cam1_scale + blend.shape[0], offset1_x:offset1_x + blend.shape[1]] = blend
+            elif (cam1_name, cam2_name) == ("back", "left_back"):   
+                avm_img[offset1_y:offset1_y + blend.shape[0], offset1_x:offset1_x + blend.shape[1]] = blend
+            elif (cam1_name, cam2_name) == ("left_back", "left_front"):
+                avm_img[offset1_y:offset1_y + blend.shape[0], offset1_x:offset1_x + blend.shape[1]] = blend
+            elif (cam1_name, cam2_name) == ("left_front", "front"):
+                avm_img[offset1_y:offset1_y + blend.shape[0], offset1_x:offset1_x + blend.shape[1]] = blend
+
+        # 预留渐变掩码接口
+        # blend_masks[cam] = self.get_weights_and_blendmasks(cam, (h, w), offset)
         return avm_img, blend_masks
 
 if __name__ == "__main__":
@@ -379,7 +426,7 @@ if __name__ == "__main__":
     parser.add_argument('--images_dir', type=str,
                         default=str(Path(__file__).resolve().parents[2] / "config" / "images"),
                         help='图像目录')
-    parser.add_argument('--save_result', action='store_true', default=False, help='保存拼接结果')
+    parser.add_argument('--save_result', default=True, help='保存拼接结果')
     parser.add_argument('--camera_names', type=str, default='right_front,right_back', 
                         help='参与拼接的相机列表.最多支持6个相机(顺时针排布)：front,right_front,right_back,back,left_back,left_front')
     args = parser.parse_args()
@@ -392,7 +439,7 @@ if __name__ == "__main__":
     stitcher.initialize_overlap_pairs(camera_list)
     stitcher.get_weights_and_blendmasks(camera_list)
     stitcher.make_luminance_balance()
-    avm_img, blend_masks = stitcher.stitch_all_parts(camera_list)
+    avm_img, blend_masks = stitcher.stitch_all_parts()
     stitcher.make_white_balance()
     stitcher.copy_ship_image_to_avm()
 

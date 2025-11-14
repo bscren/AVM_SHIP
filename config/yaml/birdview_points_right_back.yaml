@@ -5,7 +5,7 @@ src_points: !!opencv-matrix
    rows: 4
    cols: 2
    dt: f
-   data: [ 354., 450., 289., 433., 353., 316., 389., 321. ]
+   data: [ 359., 458., 292., 442., 354., 300., 396., 309. ]
 dst_points: !!opencv-matrix
    rows: 4
    cols: 2

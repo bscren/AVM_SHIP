@@ -138,7 +138,7 @@ class ParamSettings:
                     (inn_shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1]),
                     (inn_shift_width , shift_height + calib_block_SS_size[1])],
             "right_back": 
-                    [(inn_shift_width , inn_shift_height),
+                    [(inn_shift_width , overlap_inn_height),
                     (inn_shift_width + calib_block_SS_size[0] , inn_shift_height),
                     (inn_shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1]),
                     (inn_shift_width , inn_shift_height + calib_block_SS_size[1])
@@ -149,7 +149,7 @@ class ParamSettings:
                     (shift_width + calib_block_SS_size[0] , shift_height + calib_block_SS_size[1]),
                     (shift_width , shift_height + calib_block_SS_size[1])],
             "left_back": 
-                    [(shift_width , inn_shift_height),
+                    [(shift_width , overlap_inn_height),
                     (shift_width + calib_block_SS_size[0] , inn_shift_height),
                     (shift_width + calib_block_SS_size[0] , inn_shift_height + calib_block_SS_size[1]),
                     (shift_width , inn_shift_height + calib_block_SS_size[1])
@@ -173,9 +173,9 @@ class ParamSettings:
         }
 
 
-        # 重叠区域对（顺时针），及其对应的重叠区域分割逻辑
+        # 重叠区域对（顺时针），及其对应的重叠区域分割逻辑，返还的是切割坐标（x,y），而不是长度
         self.crop_overlap_logics = {
-        # 切割逻辑：键是图像对，值是切割坐标（x,y），而不是长度
+        # 切割逻辑：键是图像对，值是切割坐标（x,y）
             ("front", "right_front"): (
                 self.proj_image_sizes["front"][0] - overlap_blocks["L_RF"][0],  # 右侧切割像素
                 overlap_blocks["L_RF"][1]  # 顶部切割像素
@@ -190,7 +190,7 @@ class ParamSettings:
             ),
             ("back", "left_back"): (
                 overlap_blocks["B_LB"][0],  # 左侧切割像素
-                self.proj_image_sizes["back"][1] - overlap_blocks["B_LB"][1]  # 底部切割像素
+                self.proj_image_sizes["left_back"][1] - overlap_blocks["B_LB"][1]  # 底部切割像素
             ),
             ("left_back", "left_front"): (
                 overlap_blocks["LB_LF"][1],  # 顶部切割像素
@@ -210,7 +210,7 @@ class ParamSettings:
                 self.proj_image_sizes["front"][0] - overlap_blocks["L_RF"][0],  # 右侧切割像素  
                        ), 
             "right_front": (
-                overlap_blocks["RF_RB"][1], # 顶部切割像素
+                overlap_blocks["LF_F"][1], # 顶部切割像素
                 self.proj_image_sizes["right_front"][1] - overlap_blocks["RF_RB"][1],  # 底部切割像素
             ),
             "right_back": (
@@ -223,11 +223,11 @@ class ParamSettings:
             ),
             "left_back": (
                 overlap_blocks["LB_LF"][1],  # 顶端切割像素
-                self.proj_image_sizes["left_back"][1] - overlap_blocks["LB_LF"][1],  # 底部切割像素
+                self.proj_image_sizes["left_back"][1] - overlap_blocks["B_LB"][1],  # 底部切割像素
             ),
             "left_front": (
                 overlap_blocks["LF_F"][0],  # 顶端切割像素
-                self.proj_image_sizes["left_front"][0] - overlap_blocks["LF_F"][0],  # 底部切割像素
+                self.proj_image_sizes["left_front"][1] - overlap_blocks["LF_F"][1],  # 底部切割像素
             )
         }
 
